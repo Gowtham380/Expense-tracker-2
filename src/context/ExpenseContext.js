@@ -4,7 +4,7 @@ import { showToast } from '../utils/toast';
 
 
 export const CATEGORIES = {
-  KADAI: ['Potato', 'Oil', 'Mixture', 'Stock', 'Gas', 'Labor', 'Shop Rent', 'EB', 'Covers'],
+  KADAI: ['Potato', 'Oil', 'Mixture', 'Stock', 'Ice Cream', 'Gas', 'Labor', 'Shop Rent', 'EB', 'Covers'],
   VEEDU: ['Food', 'Bike Fuel', 'House Rent', 'Electricity', 'Water', 'Others'],
   INCOME: ['Daily Sales', 'Other Income'],
   SPECIAL: ['Friday Poojai']
@@ -43,7 +43,7 @@ const TR = {
     Gas: "கேஸ்", Labor: "கூலி", "Shop Rent": "கடை வாடகை", EB: "மின்சாரம்", Covers: "கவர்கள்",
     Food: "உணவு", "Bike Fuel": "பெட்ரோல்", "House Rent": "வீட்டு வாடகை", Electricity: "மின்சாரம்",
     Water: "குடிநீர்", Others: "இதர செலவுகள்", "Daily Sales": "தினசரி விற்பனை", "Other Income": "மற்ற வருமானம்",
-    "Friday Poojai": "வெள்ளிக்கிழமை பூஜை"
+    "Friday Poojai": "வெள்ளிக்கிழமை பூஜை", "Ice Cream": "ஐஸ்கிரீம்"
   }
 };
 
@@ -54,9 +54,9 @@ const savedMirror = JSON.parse(localStorage.getItem('expense_mirror') || 'null')
 
 const DEFAULT_BILLS = [
   { id: 'bill_house_rent', name: 'House Rent', amount: 0, dueDay: 1, category: 'House Rent' },
-  { id: 'bill_shop_rent',  name: 'Shop Rent',  amount: 0, dueDay: 1, category: 'Shop Rent' },
-  { id: 'bill_water',     name: 'Water Bill', amount: 0, dueDay: 5, category: 'Water' },
-  { id: 'bill_eb',        name: 'EB Bill',    amount: 0, dueDay: 10, category: 'EB' },
+  { id: 'bill_shop_rent', name: 'Shop Rent', amount: 0, dueDay: 1, category: 'Shop Rent' },
+  { id: 'bill_water', name: 'Water Bill', amount: 0, dueDay: 5, category: 'Water' },
+  { id: 'bill_eb', name: 'EB Bill', amount: 0, dueDay: 10, category: 'EB' },
 ];
 
 const initialState = {
@@ -455,8 +455,8 @@ export function ExpenseProvider({ children, propSession }) {
 
   // ── OPTIMIZATION: Translation helpers are stable per language change ──────
 
-  const t  = useCallback((key) => TR[state.language][key] || key,  [state.language]);
-  const tc = useCallback((cat) => TR[state.language][cat] || cat,  [state.language]);
+  const t = useCallback((key) => TR[state.language][key] || key, [state.language]);
+  const tc = useCallback((cat) => TR[state.language][cat] || cat, [state.language]);
 
   // ── OPTIMIZATION: Memoize the full context value object ───────────────────
   // Children only re-render when a value they actually use changes.
