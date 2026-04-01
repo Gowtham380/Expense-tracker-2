@@ -4,7 +4,7 @@ import { showToast } from '../utils/toast';
 
 
 export const CATEGORIES = {
-  KADAI: ['Potato', 'Oil', 'Mixture', 'Stock', 'Ice Cream', 'Gas', 'Labor', 'Shop Rent', 'EB', 'Covers'],
+  KADAI: ['Potato', 'Oil', 'Mixture', 'Stock', 'Ice Cream', 'Gas', 'Labor', 'Shop Rent', 'EB', 'Covers','Other Expenses'],
   VEEDU: ['Food', 'Bike Fuel', 'House Rent', 'Electricity', 'Water', 'Others'],
   INCOME: ['Daily Sales','Ice Cream' ,'Other Income'],
   SPECIAL: ['Friday Poojai']
@@ -43,7 +43,7 @@ const TR = {
     Gas: "கேஸ்", Labor: "கூலி", "Shop Rent": "கடை வாடகை", EB: "மின்சாரம்", Covers: "கவர்கள்",
     Food: "உணவு", "Bike Fuel": "பெட்ரோல்", "House Rent": "வீட்டு வாடகை", Electricity: "மின்சாரம்",
     Water: "குடிநீர்", Others: "இதர செலவுகள்", "Daily Sales": "தினசரி விற்பனை", "Other Income": "மற்ற வருமானம்",
-    "Friday Poojai": "வெள்ளிக்கிழமை பூஜை", "Ice Cream": "ஐஸ்கிரீம்"
+    "Friday Poojai": "வெள்ளிக்கிழமை பூஜை", "Ice Cream": "ஐஸ்கிரீம்","Other Expenses":"இதர செலவுகள்"
   }
 };
 
