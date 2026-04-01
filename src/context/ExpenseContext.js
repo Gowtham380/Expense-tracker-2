@@ -6,7 +6,7 @@ import { showToast } from '../utils/toast';
 export const CATEGORIES = {
   KADAI: ['Potato', 'Oil', 'Mixture', 'Stock', 'Ice Cream', 'Gas', 'Labor', 'Shop Rent', 'EB', 'Covers'],
   VEEDU: ['Food', 'Bike Fuel', 'House Rent', 'Electricity', 'Water', 'Others'],
-  INCOME: ['Daily Sales', 'Other Income'],
+  INCOME: ['Daily Sales','Ice Cream' ,'Other Income'],
   SPECIAL: ['Friday Poojai']
 };
 
