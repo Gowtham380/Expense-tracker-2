@@ -26,7 +26,7 @@ function expenseReducer(state, action) {
       return { ...state, transactions: state.transactions.filter(t => t.id !== action.payload) };
     case 'BULK_DELETE':
       return { ...state, transactions: state.transactions.filter(t => !action.payload.includes(t.id)) };
-    case 'SET_MODE': return { ...state, appMode: action.payload };
+
     case 'SET_LANGUAGE': return { ...state, language: action.payload };
     case 'SET_BILLS': return { ...state, bills: action.payload };
     case 'SET_CATEGORY_BUDGET':
@@ -42,7 +42,7 @@ const TX_EXP2  = { id: 'tx-3', type: 'expense', amount:  500, category: 'Gas',  
 
 const baseState = {
   transactions: [TX_INCOME, TX_EXP1, TX_EXP2],
-  appMode: 'kadai',
+
   language: 'en',
   bills: [],
   categoryBudgets: {},
@@ -195,19 +195,6 @@ describe('Income & Expense calculations', () => {
   });
 });
 
-// ─── SET_MODE ─────────────────────────────────────────────────────────────────
-describe('Reducer — SET_MODE', () => {
-  test('switches to veedu mode', () => {
-    const next = expenseReducer(baseState, { type: 'SET_MODE', payload: 'veedu' });
-    expect(next.appMode).toBe('veedu');
-  });
-
-  test('switches back to kadai mode', () => {
-    const s    = { ...baseState, appMode: 'veedu' };
-    const next = expenseReducer(s, { type: 'SET_MODE', payload: 'kadai' });
-    expect(next.appMode).toBe('kadai');
-  });
-});
 
 // ─── SET_CATEGORY_BUDGET ──────────────────────────────────────────────────────
 describe('Reducer — SET_CATEGORY_BUDGET', () => {

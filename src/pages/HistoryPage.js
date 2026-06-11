@@ -2,14 +2,13 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useExpense, formatINR, CATEGORIES } from '../context/ExpenseContext';
 import {
   Clock, Search, Trash2, Pencil, Check, X,
-  RefreshCw, ShieldCheck, Filter, TrendingUp, TrendingDown, XCircle, FileText
+  RefreshCw, ShieldCheck, Filter, TrendingUp, TrendingDown, XCircle, FileText,
+  MoreVertical
 } from 'lucide-react';
 import AmountInput from '../components/AmountInput';
 
-const APP_PASSWORD = '1234';
-
 export default function HistoryPage() {
-  const { transactions, deleteTransaction, editTransaction, bulkDelete, isSyncing, appMode, language, t, tc } = useExpense();
+  const { transactions, deleteTransaction, editTransaction, bulkDelete, isSyncing, customCategories, securePin, language, t, tc } = useExpense();
   const isTA = language === 'ta';
 
   const [search, setSearch]       = useState('');
@@ -22,13 +21,25 @@ export default function HistoryPage() {
   const [editForm, setEditForm]       = useState({});
 
   const [showPwModal, setShowPwModal]   = useState(false);
-  const [pwInput, setPwInput]           = useState('');
+  const [pwInput, setPwInput]           = useState(['', '', '', '']);
   const [pwError, setPwError]           = useState('');
   const [pendingAction, setPendingAction] = useState(null);
-  const pwRef = useRef(null);
+  const pwRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
+
+  const [openMenuId, setOpenMenuId] = useState(null);
+
+  // Click outside to close menu
+  useEffect(() => {
+    const handleOutsideClick = () => setOpenMenuId(null);
+    if (openMenuId) {
+      window.addEventListener('click', handleOutsideClick);
+    }
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, [openMenuId]);
 
   useEffect(() => {
-    if (showPwModal) { setPwInput(''); setPwError(''); setTimeout(() => pwRef.current?.focus(), 80); }
+    if (showPwModal) { setPwInput(['', '', '', '']); setPwError(''); setTimeout(() => pwRefs[0].current?.focus(), 80); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showPwModal]);
 
   // ── Sticky Header & Profile Logic ────────────────────────────────────
@@ -39,19 +50,23 @@ export default function HistoryPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // ── Filtered transactions ─────────────────────────────────────────────
   const filtered = useMemo(() => {
+    const unifiedTransactions = [...transactions]; // Absolute flat unification, no category grouping
     const q    = search.toLowerCase();
     const from = fromDate ? new Date(fromDate) : null;
     const to   = toDate   ? new Date(toDate + 'T23:59:59') : null;
-    return transactions.filter(tx => {
+    return unifiedTransactions.filter(tx => {
       const matchText = !q || (tx.desc || '').toLowerCase().includes(q) || (tx.category || '').toLowerCase().includes(q);
       const txDate    = tx.date ? new Date(tx.date) : null;
       const matchFrom = !from || (txDate && txDate >= from);
       const matchTo   = !to   || (txDate && txDate <= to);
       const matchType = typeFilter === 'all' || tx.type === typeFilter;
       return matchText && matchFrom && matchTo && matchType;
-    }).sort((a, b) => new Date(b.date) - new Date(a.date));
+    }).sort((a, b) => {
+      const timeA = new Date(a.created_at || `${a.date}T00:00:00`).getTime();
+      const timeB = new Date(b.created_at || `${b.date}T00:00:00`).getTime();
+      return timeB - timeA; // Forces pure descending order (Desc) by created_at
+    });
   }, [transactions, search, fromDate, toDate, typeFilter]);
 
   const hasActiveFilters  = search || fromDate || toDate || typeFilter !== 'all';
@@ -112,9 +127,7 @@ export default function HistoryPage() {
     setSelectedIds(next);
   };
 
-  const handleBulkDelete = () => {
-    if (!selectedIds.size) return;
-    if (!window.confirm(`Delete ${selectedIds.size} item(s)?`)) return;
+  const executeBulkDelete = () => {
     const income = [], expense = [];
     for (const id of selectedIds) {
       const tx = transactions.find(x => x.id === id);
@@ -124,19 +137,57 @@ export default function HistoryPage() {
     setSelectedIds(new Set());
   };
 
-  // ── Password gate ─────────────────────────────────────────────────────
-  const requestAuth = (type, tx, e) => {
-    e.stopPropagation();
-    if (type === 'edit') setEditForm({ amount: tx.amount, category: tx.category || '', date: tx.date ? new Date(tx.date).toISOString().split('T')[0] : '', desc: tx.desc || '' });
-    setPendingAction({ type, tx });
+  const handleBulkDelete = () => {
+    if (!selectedIds.size) return;
+    setPendingAction({ type: 'bulk_delete' });
     setShowPwModal(true);
   };
 
+  // ── Password gate ─────────────────────────────────────────────────────
+  const requestAuth = (type, tx, e) => {
+    e?.stopPropagation();
+    setOpenMenuId(null);
+    if (type === 'edit') setEditForm({ amount: tx.amount, category: tx.category || '', date: tx.date ? new Date(tx.date).toISOString().split('T')[0] : '', desc: tx.desc || '' });
+    
+    if (type === 'edit') {
+      setEditingId(tx.id);
+      return;
+    }
+
+    if (type === 'delete') {
+      setPendingAction({ type: 'delete', tx });
+      setShowPwModal(true);
+    }
+  };
+
+  const handlePinChange = (index, value) => {
+    if (!/^\d*$/.test(value)) return;
+    const newPin = [...pwInput];
+    newPin[index] = value;
+    setPwInput(newPin);
+    if (value && index < 3) pwRefs[index + 1].current?.focus();
+  };
+
+  const handlePinKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !pwInput[index] && index > 0) pwRefs[index - 1].current?.focus();
+    if (e.key === 'Enter') confirmPassword();
+  };
+
   const confirmPassword = () => {
-    if (pwInput !== APP_PASSWORD) { setPwError('Incorrect password. Try again.'); setPwInput(''); pwRef.current?.focus(); return; }
+    const pinStr = pwInput.join('');
+    if (pinStr.length < 4 || pinStr !== securePin) { 
+      setPwError('Incorrect PIN. Try again.'); 
+      setPwInput(['', '', '', '']); 
+      pwRefs[0].current?.focus(); 
+      return; 
+    }
     setShowPwModal(false);
-    if (pendingAction?.type === 'delete') { deleteTransaction(pendingAction.tx.id, pendingAction.tx.type); setSelectedIds(new Set()); }
-    else if (pendingAction?.type === 'edit') setEditingId(pendingAction.tx.id);
+    if (pendingAction?.type === 'delete') { 
+      deleteTransaction(pendingAction.tx.id, pendingAction.tx.type); 
+      setSelectedIds(new Set()); 
+    } else if (pendingAction?.type === 'bulk_delete') {
+      executeBulkDelete();
+    }
     setPendingAction(null);
   };
   const cancelPassword = () => { setShowPwModal(false); setPendingAction(null); };
@@ -150,9 +201,7 @@ export default function HistoryPage() {
   };
   const cancelEdit = (e) => { e.stopPropagation(); setEditingId(null); };
 
-  const categoryOptions = appMode === 'kadai'
-    ? [...CATEGORIES.KADAI, ...CATEGORIES.SPECIAL]
-    : [...CATEGORIES.VEEDU, ...CATEGORIES.SPECIAL];
+  const categoryOptions = customCategories ? customCategories.map(c => c.name) : [...CATEGORIES.INCOME, ...CATEGORIES.PERSONAL];
 
   return (
     <div className="space-y-4 animate-in fade-in pb-24">
@@ -164,15 +213,26 @@ export default function HistoryPage() {
             <div className="flex items-center gap-3">
               <ShieldCheck className="w-6 h-6 text-neonEmerald" />
               <div>
-                <h3 className="font-bold text-lg">Confirm Action</h3>
-                <p className="text-xs text-gray-400">Enter password to {pendingAction?.type === 'delete' ? 'delete' : 'edit'} this transaction.</p>
+                <h3 className="font-bold text-lg">{t('confirm_action')}</h3>
+                <p className="text-xs text-gray-400">{t('enter_pin_to_delete')}</p>
               </div>
             </div>
-            <input ref={pwRef} type="password" value={pwInput}
-              onChange={e => { setPwInput(e.target.value); setPwError(''); }}
-              onKeyDown={e => e.key === 'Enter' && confirmPassword()}
-              placeholder="Enter password…"
-              className={`glass-input w-full py-3 text-center tracking-widest text-lg ${pwError ? '!border-neonRose' : ''}`} />
+            
+            <div className="flex justify-center gap-3">
+              {[0, 1, 2, 3].map(i => (
+                <input
+                  key={i}
+                  ref={pwRefs[i]}
+                  type="password"
+                  maxLength={1}
+                  value={pwInput[i]}
+                  onChange={e => { handlePinChange(i, e.target.value); setPwError(''); }}
+                  onKeyDown={e => handlePinKeyDown(i, e)}
+                  className={`w-14 h-14 text-center text-2xl font-bold bg-darkBg/80 border ${pwError ? 'border-neonRose' : 'border-white/20 focus:border-neonEmerald'} rounded-xl shadow-inner outline-none transition-all`}
+                />
+              ))}
+            </div>
+
             {pwError && <p className="text-neonRose text-xs text-center">{pwError}</p>}
             <div className="flex gap-3">
               <button onClick={confirmPassword} className="flex-1 py-2.5 rounded-xl bg-neonEmerald/20 text-neonEmerald border border-neonEmerald/40 font-semibold hover:bg-neonEmerald hover:text-white transition-all flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Confirm</button>
@@ -183,17 +243,17 @@ export default function HistoryPage() {
       )}
 
       {/* ── Sticky Filter Header ──────────────────────────────────────── */}
-      <div className={`sticky top-0 z-30 transition-all duration-300 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-b border-white/10 flex flex-col ${isScrolled ? 'bg-darkCard/80 py-2.5 px-4 space-y-2' : 'glass-card p-4 space-y-3'}`}>
+      <div className={`sticky top-0 z-40 bg-slate-50/90 dark:bg-[#0f172a]/90 backdrop-blur-md border-b border-slate-200/80 dark:border-white/[0.08] py-3.5 flex flex-col ${isScrolled ? 'px-4 space-y-2' : 'px-4 space-y-3'}`}>
         {/* Title row */}
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <Clock className={`text-neonEmerald transition-all duration-300 ${isScrolled ? 'w-4 h-4' : 'w-5 h-5'}`} />
-            <h1 className={`font-bold transition-all duration-300 ${isScrolled ? 'text-lg' : 'text-xl'}`}>{t('history')}</h1>
+            <Clock className={`text-emerald-600 dark:text-neonEmerald transition-all duration-300 ${isScrolled ? 'w-4 h-4' : 'w-5 h-5'}`} />
+            <h1 className={`font-bold text-slate-900 dark:text-white transition-all duration-300 ${isScrolled ? 'text-lg' : 'text-xl'}`}>{t('history')}</h1>
             {isSyncing && <span className="flex items-center gap-1 text-xs text-neonEmerald animate-pulse"><RefreshCw className="w-3 h-3 animate-spin" /> Syncing…</span>}
           </div>
           <div className="flex items-center gap-3">
             <button onClick={handlePrint} title="Print / Export PDF"
-              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-neonEmerald/10 border border-neonEmerald/30 text-neonEmerald hover:bg-neonEmerald hover:text-white transition-all font-semibold">
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 dark:text-emerald-400 border border-emerald-500/20 dark:border-emerald-500/30 rounded-xl text-xs font-black tracking-wide transition-all active:scale-[0.97] cursor-pointer">
               <FileText className="w-3.5 h-3.5" /> PDF
             </button>
             {selectedIds.size > 0 && (
@@ -220,18 +280,18 @@ export default function HistoryPage() {
 
         {/* Date + Type row (Stays visible, compact horizontal scroll layout) */}
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide w-full items-center">
-          <div className={`flex items-center gap-2 shrink-0 bg-darkBg/50 border border-white/10 rounded-xl px-3 transition-all duration-300 ${isScrolled ? 'py-1.5' : 'py-2'}`}>
-            <Filter className="w-3.5 h-3.5 text-gray-500" />
-            <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="bg-transparent text-sm text-white focus:outline-none cursor-pointer" title="From (optional)" placeholder="From" />
+          <div className="flex items-center gap-2 shrink-0 bg-white text-[#0f172a] dark:bg-slate-900 dark:text-white border border-slate-300 dark:border-white/[0.12] focus-within:border-slate-500 rounded-xl px-3 py-2 text-xs font-bold tracking-wide transition-all">
+            <Filter className="w-3.5 h-3.5 text-[#0f172a]/50 dark:text-slate-400" />
+            <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="bg-transparent text-[#0f172a] dark:text-white focus:outline-none cursor-pointer" title="From (optional)" placeholder="From" />
           </div>
-          <div className={`flex items-center gap-2 shrink-0 bg-darkBg/50 border border-white/10 rounded-xl px-3 transition-all duration-300 ${isScrolled ? 'py-1.5' : 'py-2'}`}>
-            <Filter className="w-3.5 h-3.5 text-gray-500" />
-            <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="bg-transparent text-sm text-white focus:outline-none cursor-pointer" title="To (optional)" placeholder="To" />
+          <div className="flex items-center gap-2 shrink-0 bg-white text-[#0f172a] dark:bg-slate-900 dark:text-white border border-slate-300 dark:border-white/[0.12] focus-within:border-slate-500 rounded-xl px-3 py-2 text-xs font-bold tracking-wide transition-all">
+            <Filter className="w-3.5 h-3.5 text-[#0f172a]/50 dark:text-slate-400" />
+            <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="bg-transparent text-[#0f172a] dark:text-white focus:outline-none cursor-pointer" title="To (optional)" placeholder="To" />
           </div>
-          <div className={`flex shrink-0 bg-darkBg/50 border border-white/10 rounded-xl gap-1 transition-all duration-300 ${isScrolled ? 'p-0.5' : 'p-1'}`}>
+          <div className="flex bg-[#38240D]/[0.04] p-1 rounded-xl border border-[#38240D]/[0.06] gap-1">
             {[{ val: 'all', label: isTA ? 'அனைத்தும்' : 'All' }, { val: 'income', label: <TrendingUp className="w-4 h-4" /> }, { val: 'expense', label: <TrendingDown className="w-4 h-4" /> }].map(({ val, label }) => (
               <button key={val} onClick={() => setTypeFilter(val)}
-                className={`flex items-center justify-center px-3 rounded-lg text-xs font-bold transition-all border ${isScrolled ? 'py-1.5' : 'py-1.5'} ${typeFilter === val ? val === 'income' ? 'bg-neonEmerald/20 text-neonEmerald border-neonEmerald/40' : val === 'expense' ? 'bg-neonRose/20 text-neonRose border-neonRose/40' : 'bg-white/10 text-white border-white/20' : 'text-gray-500 border-white/5 hover:text-white'}`}>
+                className={`flex-1 flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex-shrink-0 ${typeFilter === val ? 'bg-[#38240D] text-white shadow-md' : 'text-[#38240D]/60 hover:text-[#38240D] border-transparent'}`}>
                 {label}
               </button>
             ))}
@@ -265,23 +325,23 @@ export default function HistoryPage() {
           <div className="flex flex-col divide-y divide-white/5">
             {filtered.map(tx => (
               <div key={tx.id} onClick={() => toggleSelect(tx.id)}
-                className={`relative flex items-center gap-3 px-3 py-3 transition-all cursor-pointer rounded-xl active:scale-[0.98] ${
-                  selectedIds.has(tx.id) ? 'bg-indigo-500/20' : 'hover:bg-white/5 active:bg-white/10'
+                className={`bg-white dark:bg-slate-900/40 border border-slate-200/80 dark:border-white/[0.05] rounded-xl px-4 py-3.5 flex items-center justify-between gap-3 mb-2.5 transition-shadow hover:shadow-sm cursor-pointer active:scale-[0.98] ${
+                  selectedIds.has(tx.id) ? 'bg-slate-50 dark:bg-slate-800/50' : ''
                 }`}>
 
-                {/* Checkbox + Type icon — w-9 h-9 = 36px, meets minimum tap target with row padding */}
+                {/* Checkbox + Type icon */}
                 <div className={`w-9 h-9 rounded-full border flex-shrink-0 flex items-center justify-center transition-all ${
                   selectedIds.has(tx.id)
                     ? 'bg-indigo-500 border-indigo-500 text-white'
                     : tx.type === 'income'
-                      ? 'bg-neonEmerald/10 border-neonEmerald/30'
-                      : 'bg-neonRose/10 border-neonRose/30'
+                      ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-500/30'
+                      : 'bg-rose-50 border-rose-200 dark:bg-rose-900/20 dark:border-rose-500/30'
                 }`}>
                   {selectedIds.has(tx.id)
                     ? <Check className="w-4 h-4" />
                     : tx.type === 'income'
-                      ? <TrendingUp className="w-4 h-4 text-neonEmerald" />
-                      : <TrendingDown className="w-4 h-4 text-neonRose" />
+                      ? <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      : <TrendingDown className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                   }
                 </div>
 
@@ -305,19 +365,43 @@ export default function HistoryPage() {
                   ) : (
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{tc(tx.category) || 'Misc'}</span>
-                        <p className="text-sm font-medium text-gray-200 truncate leading-tight">{tx.desc || <span className="text-gray-600 italic text-xs">No notes</span>}</p>
-                        <p className="text-[11px] text-gray-600 mt-0.5">{tx.date ? new Date(tx.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Unknown Date'}</p>
+                        <span className="text-[#0f172a] dark:text-slate-100 font-bold text-sm uppercase tracking-wide">{tc(tx.category) || 'Misc'}</span>
+                        <p className="text-[#0f172a]/80 dark:text-slate-300 font-medium text-xs truncate leading-tight mt-0.5">{tx.desc || <span className="text-[#0f172a]/50 dark:text-slate-500 italic text-xs">No notes</span>}</p>
+                        <p className="text-[#0f172a]/70 dark:text-slate-400 font-semibold text-xs mt-0.5">{tx.date ? new Date(tx.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Unknown Date'}</p>
                       </div>
                       <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <span className={`text-sm font-black tracking-tight ${tx.type === 'income' ? 'text-neonEmerald' : 'text-neonRose'}`}>
+                        <span className={`text-sm font-extrabold tracking-tight ${tx.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                           {tx.type === 'income' ? '+' : '−'}{formatINR(tx.amount)}
                         </span>
                         {!selectedIds.has(tx.id) && (
-                          <div className="flex items-center gap-0.5">
-                            {/* p-2 + w-4 h-4 = ~32px icon area, acceptable with finger */}
-                            <button onClick={(e) => requestAuth('edit', tx, e)} className="p-2 hover:bg-blue-500/20 hover:text-blue-400 rounded-lg transition-all text-gray-500 active:scale-90"><Pencil className="w-4 h-4" /></button>
-                            <button onClick={(e) => requestAuth('delete', tx, e)} className="p-2 hover:bg-neonRose/20 hover:text-neonRose rounded-lg transition-all text-gray-500 active:scale-90"><Trash2 className="w-4 h-4" /></button>
+                          <div className="relative flex items-center">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(openMenuId === tx.id ? null : tx.id);
+                              }}
+                              className="p-1.5 hover:bg-white/10 rounded-lg transition-all text-gray-400 active:scale-90"
+                            >
+                              <MoreVertical className="w-5 h-5" />
+                            </button>
+                            
+                            {/* 3-Dot Dropdown Overlay */}
+                            {openMenuId === tx.id && (
+                              <div className="absolute right-0 top-full mt-1 w-36 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden" onClick={e => e.stopPropagation()}>
+                                <button
+                                  onClick={(e) => requestAuth('edit', tx, e)}
+                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-slate-700 transition-colors"
+                                >
+                                  <Pencil className="w-4 h-4 text-blue-400" /> Edit
+                                </button>
+                                <button
+                                  onClick={(e) => requestAuth('delete', tx, e)}
+                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors border-t border-slate-700"
+                                >
+                                  <Trash2 className="w-4 h-4" /> Delete
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

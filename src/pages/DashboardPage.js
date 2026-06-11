@@ -1,41 +1,160 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Modal from '../components/Modals';
-import { useExpense, formatINR, CATEGORIES } from '../context/ExpenseContext';
+import { useExpense, formatINR } from '../context/ExpenseContext';
 import {
-  PlusCircle, MinusCircle, Flame, Store, Home, ArrowRight,
-  CloudLightning, CheckCircle2, AlertTriangle, X, Wallet
+  Plus, Minus, TrendingUp, TrendingDown,
+  CloudLightning, CheckCircle2, AlertTriangle, X, Wallet, RefreshCcw, Activity
 } from 'lucide-react';
 import FinancialHealth from '../components/FinancialHealth';
-import { supabase } from '../supabaseClient';
-import AmountInput from '../components/AmountInput';
 
+// ── Smart Infinite Metrics Ticker Component ─────────────────────────────────
+function TickerMetrics({ todayIncome, todayExpenses, netProfit, incomeGrowth, expenseGrowth, t, language }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const scrollRef = useRef(null);
+
+  const metricsData = [
+    {
+      title: t('daily_sales'),
+      value: formatINR(todayIncome),
+      detailText: 'VS. YESTERDAY',
+      borderTopClass: 'border-t-[#00d40e]',
+      bgGlowClass: 'bg-[#38240D]/5 group-hover:bg-[#38240D]/10',
+      icon: (
+        <span className="text-[#38240D]/80 flex items-center">
+          {incomeGrowth >= 0 ? <TrendingUp className="w-4 h-4 mr-1" /> : <TrendingDown className="w-4 h-4 mr-1" />}
+          {Math.abs(incomeGrowth)}%
+        </span>
+      )
+    },
+    {
+      title: t('daily_expenses'),
+      value: formatINR(todayExpenses),
+      detailText: 'VS. YESTERDAY',
+      borderTopClass: 'border-t-[#fc0307]',
+      bgGlowClass: 'bg-[#38240D]/5 group-hover:bg-[#38240D]/10',
+      icon: (
+        <span className="text-[#38240D]/80 flex items-center">
+          {expenseGrowth <= 0 ? <TrendingDown className="w-4 h-4 mr-1" /> : <TrendingUp className="w-4 h-4 mr-1" />}
+          {Math.abs(expenseGrowth)}%
+        </span>
+      )
+    },
+    {
+      title: t('net_profit'),
+      value: formatINR(netProfit),
+      detailText: 'LIVE CALCULATED',
+      borderTopClass: 'border-t-[#38240D]',
+      bgGlowClass: 'bg-[#38240D]/5 group-hover:bg-[#38240D]/10',
+      icon: <Activity className="w-4 h-4 text-[#38240D]/80" />
+    }
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveIndex((prevIndex) => {
+        const nextIndex = (prevIndex + 1) % 3;
+        if (scrollRef.current) {
+          const childWidth = scrollRef.current.clientWidth;
+          scrollRef.current.scrollTo({ left: nextIndex * childWidth, behavior: 'smooth' });
+        }
+        return nextIndex;
+      });
+    }, 3000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleScroll = () => {
+    if (scrollRef.current) {
+      const scrollLeft = scrollRef.current.scrollLeft;
+      const childWidth = scrollRef.current.clientWidth;
+      const index = Math.round(scrollLeft / childWidth);
+      if (index !== activeIndex) {
+        setActiveIndex(index);
+      }
+    }
+  };
+
+  const scrollToIdx = (idx) => {
+    setActiveIndex(idx);
+    if (scrollRef.current) {
+      const childWidth = scrollRef.current.clientWidth;
+      scrollRef.current.scrollTo({ left: idx * childWidth, behavior: 'smooth' });
+    }
+  };
+
+  return (
+    <div className="relative w-full md:max-w-4xl lg:max-w-5xl mx-auto rounded-[20px] mb-2 px-2 md:px-0">
+      <div 
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-none gap-4 w-full"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {metricsData.map((metric, idx) => {
+          const isPositiveNet = netProfit >= 0;
+          const bgClasses = idx === 0 
+            ? 'bg-emerald-500/[0.03] dark:bg-emerald-500/[0.05] border border-emerald-500/20 dark:border-emerald-500/30 shadow-[0_8px_32px_rgba(16,185,129,0.03)]' 
+            : idx === 1 
+            ? 'bg-rose-500/[0.03] dark:bg-rose-500/[0.05] border border-rose-500/20 dark:border-rose-500/30 shadow-[0_8px_32px_rgba(239,68,68,0.03)]' 
+            : 'bg-blue-500/[0.03] dark:bg-blue-500/[0.05] border border-blue-500/20 dark:border-blue-500/30 shadow-[0_8px_32px_rgba(59,130,246,0.03)]';
+            
+          const textClasses = idx === 0 
+            ? 'text-emerald-600 dark:text-emerald-400 font-black' 
+            : idx === 1 
+            ? 'text-rose-600 dark:text-rose-400 font-black' 
+            : (isPositiveNet ? 'text-emerald-600 dark:text-emerald-400 font-extrabold' : 'text-rose-600 dark:text-rose-400 font-extrabold');
+
+          return (
+            <div key={idx} className="w-full shrink-0 snap-center">
+              <div className={`${bgClasses} p-4 md:p-6 lg:p-10 relative overflow-hidden group h-[200px] md:h-[240px] flex flex-col justify-center rounded-2xl backdrop-blur-md`}>
+                <div className={`absolute -right-10 -top-10 w-40 h-40 rounded-full blur-3xl transition-all duration-700 ${metric.bgGlowClass}`}></div>
+                <h3 className={`text-xs md:text-sm font-bold text-[#0f172a]/70 dark:text-slate-400 mb-2 md:mb-3 ${language === 'ta' ? 'tracking-normal leading-relaxed' : 'tracking-widest uppercase'}`}>{metric.title}</h3>
+                <div className={`text-3xl md:text-5xl lg:text-6xl ${textClasses} font-sans tracking-tight mb-3 md:mb-5 select-none`}>
+                  {metric.value}
+                </div>
+                <div className="flex items-center gap-1.5 text-xs md:text-sm font-bold text-[#0f172a]/70 dark:text-slate-400">
+                  {metric.icon}
+                  <span className="tracking-wider uppercase ml-1">{metric.detailText}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      
+      {/* Pagination indicators */}
+      <div className="absolute bottom-4 md:bottom-6 left-0 right-0 flex justify-center gap-2 pb-2">
+        {metricsData.map((_, idx) => (
+          <button 
+            key={idx}
+            onClick={() => scrollToIdx(idx)}
+            className={`h-1.5 rounded-full transition-all duration-300 ${activeIndex === idx ? 'w-6 bg-white' : 'w-2 bg-white/20 hover:bg-white/40'}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Main Dashboard ──────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const {
-    transactions, t, appMode, setAppMode,
+    transactions, t, tc,
     isSyncing, dbSetupRequired, dbConnectionError,
-    addExpense, bills, session
+    addExpense, bills, language
   } = useExpense();
 
   const [modalState, setModalState] = useState({ type: null, data: null });
-  const [poojaiAmount, setPoojaiAmount] = useState('100');
-  const [dismissedBills, setDismissedBills] = useState(new Set()); // IDs dismissed this session
-  const [imgError, setImgError] = useState(false);
+  const [dismissedBills, setDismissedBills] = useState(new Set());
 
   const closeModel = () => setModalState({ type: null, data: null });
-
-  const userMetadata = session?.user?.user_metadata || {};
-  const avatarUrl = userMetadata.avatar_url;
-  const fullName = userMetadata.full_name || userMetadata.name || session?.user?.email || 'U';
-  const initial = fullName.charAt(0).toUpperCase();
-
-  const isFriday = new Date().getDay() === 5;
   const today    = new Date();
   const todayDay = today.getDate();
   const currentMonth = today.getMonth();
   const currentYear  = today.getFullYear();
 
   // ── Bill Payment Check ────────────────────────────────────────────────
-  // A bill is "paid this month" if there's an expense with matching category in current month
   const isPaidThisMonth = (bill) => transactions.some(tx => {
     if (tx.type !== 'expense') return false;
     const d = new Date(tx.date);
@@ -46,40 +165,38 @@ export default function DashboardPage() {
     );
   });
 
-  // Bills that are due (today >= dueDay) AND not paid AND not dismissed
   const pendingBills = (bills || []).filter(bill => {
-    if (bill.amount <= 0) return false;            // skip bills with no amount set
-    if (dismissedBills.has(bill.id)) return false; // dismissed this session
-    if (isPaidThisMonth(bill)) return false;        // already paid
-    return todayDay >= bill.dueDay;                 // due today or overdue
+    if (bill.amount <= 0) return false;
+    if (dismissedBills.has(bill.id)) return false;
+    if (isPaidThisMonth(bill)) return false;
+    return todayDay >= bill.dueDay;
   });
 
-  // ── Today's Profit (Kadai Mode) ───────────────────────────────────────
+  // ── Metrics Calculation ───────────────────────────────────────
   const todayTransactions = transactions.filter(tx =>
     new Date(tx.date).toDateString() === today.toDateString()
   );
-  const todaySales = todayTransactions
+  const todayIncome = todayTransactions
     .filter(tx => tx.type === 'income')
     .reduce((acc, curr) => acc + curr.amount, 0);
-  const todayKadaiExpenses = todayTransactions
-    .filter(tx => tx.type === 'expense' && CATEGORIES.KADAI.includes(tx.category))
+  const todayExpenses = todayTransactions
+    .filter(tx => tx.type === 'expense')
     .reduce((acc, curr) => acc + curr.amount, 0);
-  const todaysProfit = todaySales - todayKadaiExpenses;
+  const netProfit = todayIncome - todayExpenses;
 
-  // ── Poojai Handler ────────────────────────────────────────────────────
-  const handlePoojaiSave = () => {
-    const amt = parseFloat(poojaiAmount);
-    if (!amt || amt <= 0) return;
-    addExpense({
-      amount: amt,
-      category: 'Friday Poojai',
-      date: new Date().toISOString(),
-      desc: 'Friday Poojai'
-    });
-    setPoojaiAmount('100');
-  };
+  // Yesterday comparison
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const yesterdayTransactions = transactions.filter(tx =>
+    new Date(tx.date).toDateString() === yesterday.toDateString()
+  );
+  const yesterdayIncome = yesterdayTransactions.filter(tx => tx.type === 'income').reduce((acc, curr) => acc + curr.amount, 0);
+  const yesterdayExpensesAmt = yesterdayTransactions.filter(tx => tx.type === 'expense').reduce((acc, curr) => acc + curr.amount, 0);
+  
+  const incomeGrowth = yesterdayIncome === 0 ? (todayIncome > 0 ? 100 : 0) : Math.round(((todayIncome - yesterdayIncome) / yesterdayIncome) * 100);
+  const expenseGrowth = yesterdayExpensesAmt === 0 ? (todayExpenses > 0 ? 100 : 0) : Math.round(((todayExpenses - yesterdayExpensesAmt) / yesterdayExpensesAmt) * 100);
 
-  // ── Bill Mark as Paid ────────────────────────────────────────────────
+  // ── Handlers ────────────────────────────────────────────────────
   const handleMarkPaid = (bill) => {
     addExpense({
       amount: bill.amount,
@@ -93,199 +210,174 @@ export default function DashboardPage() {
     setDismissedBills(prev => new Set([...prev, bill.id]));
   };
 
+  // ── Recent Transactions (Constrained Ledger) ──────────────────────────
+  const dashboardFinalFeed = (() => {
+    const sortedData = transactions || [];
+    
+    // Hardcoded System anchor for precision checking
+    const todayAnchor = new Date("2026-06-11T23:59:59"); 
+    
+    // Calculate the absolute midnight timestamp baseline for Yesterday (June 10, 2026)
+    const twoDaysAgoMidnight = new Date("2026-06-10T00:00:00").getTime();
+
+    return sortedData.filter(item => {
+      if (!item.date) return false;
+      
+      // Parse entry date safely into an absolute millisecond stamp
+      const itemTimestamp = new Date(item.date).getTime();
+      
+      // Strict conditional rule: Keep entry if it falls inside the Today and Yesterday timeline bounds
+      return itemTimestamp >= twoDaysAgoMidnight && itemTimestamp <= todayAnchor.getTime();
+    });
+  })();
+
   return (
-    <div className="space-y-6 animate-in fade-in pt-2">
+    <div className="space-y-10 animate-in fade-in pt-6 pb-24 px-2 md:px-6 bg-slate-50 dark:bg-[#0f172a] min-h-screen transition-colors duration-300">
 
-      {/* ── Database Error Banner ─────────────────────────────────────── */}
-      {dbSetupRequired && (
-        <div className="bg-red-500/10 border-l-4 border-red-500 rounded-lg p-5 flex items-start gap-4">
-          <AlertTriangle className="w-8 h-8 text-red-500 flex-shrink-0" />
-          <div className="flex-1">
-            <h3 className="font-bold text-red-500 text-lg">Database Setup Required!</h3>
-            <p className="text-red-200/80 text-sm mt-1">
-              Supabase cannot find your tables. Paste the schema.sql into your Supabase SQL Editor.
-            </p>
+      {/* ── Brand Header ────────────────────────────────────────────────── */}
+      <header className="px-2 md:max-w-4xl lg:max-w-5xl md:mx-auto">
+        <div className="bg-white dark:bg-[#1e293b]/50 border border-slate-200/80 dark:border-white/[0.05] shadow-[0_8px_30px_rgba(15,23,42,0.02)] dark:shadow-none p-4 rounded-2xl flex items-center justify-between">
+          <h1 className="text-[#0f172a] dark:text-white font-black text-base uppercase tracking-widest">
+            EXPENZA
+          </h1>
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/[0.05]">
+            {isSyncing ? (
+              <RefreshCcw className="w-4 h-4 text-emerald-600 dark:text-emerald-400 spin-fast" />
+            ) : (
+              <CloudLightning className="w-4 h-4 text-[#0f172a]/70 dark:text-slate-400" />
+            )}
           </div>
-        </div>
-      )}
-
-      {dbConnectionError && !dbSetupRequired && (
-        <div className="bg-red-500/10 border-l-4 border-red-500 rounded-lg p-5 flex items-start gap-4">
-          <AlertTriangle className="w-8 h-8 text-red-500 flex-shrink-0" />
-          <div className="flex-1">
-            <h3 className="font-bold text-red-500 text-lg">Connection Offline</h3>
-            <p className="text-red-200/80 text-sm mt-1">
-              Could not reach Supabase. Check your internet or verify your Supabase keys.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ── Header ────────────────────────────────────────────────────── */}
-      <header className="glass-card p-6 flex items-center justify-between">
-        <div className="flex flex-row items-center gap-3">
-          {avatarUrl && !imgError ? (
-            <img src={avatarUrl} alt="Profile" loading="lazy" onError={() => setImgError(true)} className="w-10 h-10 rounded-full border-2 border-white/10 shadow-lg object-cover flex-shrink-0" />
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-white text-lg border-2 border-white/10 shadow-lg flex-shrink-0">
-              {initial}
-            </div>
-          )}
-          <h1 className="text-lg font-bold text-white">Hello, {fullName}</h1>
-        </div>
-        <div className="flex flex-col items-end gap-1">
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-darkBg border border-white/10 text-[10px] font-semibold">
-            {isSyncing
-              ? <><CloudLightning className="w-3 h-3 text-amber-400 animate-pulse" /> Syncing</>
-              : <><CheckCircle2 className="w-3 h-3 text-neonEmerald" /> Synced</>
-            }
-          </div>
-          <button onClick={async () => await supabase.auth.signOut()} className="text-xs font-bold text-neonRose hover:text-white transition-colors">
-            Sign Out
-          </button>
         </div>
       </header>
 
-      {/* ── Mode Switcher ─────────────────────────────────────────────── */}
-      <div className="flex justify-center">
-        <div className="flex bg-darkCard/80 p-1 border border-white/10 rounded-2xl w-full max-w-sm">
-          <button
-            onClick={() => setAppMode('kadai')}
-            className={`flex-1 flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all ${appMode === 'kadai' ? 'bg-neonEmerald/20 text-neonEmerald shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'text-gray-400 hover:text-white'}`}
-          >
-            <Store className="w-4 h-4" /> {t('kadaiMode')}
-          </button>
-          <button
-            onClick={() => setAppMode('veedu')}
-            className={`flex-1 flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all ${appMode === 'veedu' ? 'bg-blue-500/20 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'text-gray-400 hover:text-white'}`}
-          >
-            <Home className="w-4 h-4" /> {t('veeduMode')}
-          </button>
+      {/* ── Error Banners ─────────────────────────────────────── */}
+      {dbSetupRequired && (
+        <div className="bg-red-500/10 border-l-4 border-red-500 rounded-2xl p-5 flex items-start gap-4 mx-2 md:max-w-4xl lg:max-w-5xl md:mx-auto">
+          <AlertTriangle className="w-8 h-8 text-red-500 flex-shrink-0" />
+          <div className="flex-1">
+            <h3 className="font-bold text-red-500 text-lg">Database Setup Required!</h3>
+            <p className="text-red-200/80 text-sm mt-1">Supabase cannot find your tables. Paste the schema.sql into your Supabase SQL Editor.</p>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* ── Primary Actions ───────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* ── Infinite Scrolling Ticker Engine ─────────────────────────── */}
+      <TickerMetrics 
+        todayIncome={todayIncome}
+        todayExpenses={todayExpenses}
+        netProfit={netProfit}
+        incomeGrowth={incomeGrowth}
+        expenseGrowth={expenseGrowth}
+        t={t}
+        language={language}
+      />
+
+      {/* ── Primary Action Floating Buttons ───────────────────────────── */}
+      <div className="grid grid-cols-2 gap-5 px-2 md:max-w-4xl lg:max-w-5xl md:mx-auto">
         <button
           onClick={() => setModalState({ type: 'income', data: null })}
-          className="bg-darkCard/80 border border-neonEmerald/30 rounded-3xl p-6 flex flex-col items-center justify-center gap-3 shadow-[0_8px_30px_rgba(16,185,129,0.15)] hover:bg-neonEmerald/10 active:scale-95 transition-all"
-          style={{ minHeight: '160px' }}
+          className="bg-emerald-50 hover:bg-emerald-100/80 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-500/20 font-bold text-sm py-3 rounded-xl flex flex-col items-center justify-center gap-2 transition-all duration-200"
         >
-          <div className="bg-neonEmerald/20 p-4 rounded-full">
-            <PlusCircle className="w-10 h-10 text-neonEmerald" />
+          <div className="flex items-center justify-center bg-white dark:bg-emerald-500/10 p-2 rounded-full shadow-sm">
+            <Plus className="w-6 h-6 text-emerald-600 dark:text-emerald-400" strokeWidth={2.5} />
           </div>
-          <span className="font-bold text-lg text-neonEmerald text-center leading-tight">{t('dailySales')}</span>
+          <span className={`font-bold text-sm mt-1 ${language === 'ta' ? 'tracking-normal leading-relaxed' : 'tracking-wide'}`}>{t('add_income')}</span>
         </button>
 
         <button
           onClick={() => setModalState({ type: 'expense', data: null })}
-          className="bg-darkCard/80 border border-neonRose/30 rounded-3xl p-6 flex flex-col items-center justify-center gap-3 shadow-[0_8px_30px_rgba(244,63,94,0.15)] hover:bg-neonRose/10 active:scale-95 transition-all"
-          style={{ minHeight: '160px' }}
+          className="bg-rose-50 hover:bg-rose-100/80 text-rose-800 dark:bg-rose-500/10 dark:text-rose-400 border border-rose-200/50 dark:border-rose-500/20 font-bold text-sm py-3 rounded-xl flex flex-col items-center justify-center gap-2 transition-all duration-200"
         >
-          <div className="bg-neonRose/20 p-4 rounded-full">
-            <MinusCircle className="w-10 h-10 text-neonRose" />
+          <div className="flex items-center justify-center bg-white dark:bg-rose-500/10 p-2 rounded-full shadow-sm">
+            <Minus className="w-6 h-6 text-rose-600 dark:text-rose-400" strokeWidth={2.5} />
           </div>
-          <span className="font-bold text-lg text-neonRose text-center leading-tight">{t('expenseTitle')}</span>
+          <span className={`font-bold text-sm mt-1 ${language === 'ta' ? 'tracking-normal leading-relaxed' : 'tracking-wide'}`}>{t('add_expense')}</span>
         </button>
       </div>
 
       {/* ── Smart Alerts Section ─────────────────────────────────────── */}
-      <div className="flex flex-col gap-3">
-
-        {/* ── Pending Bill Notification Banners ── */}
+      <div className="flex flex-col gap-4 px-2 md:max-w-4xl lg:max-w-5xl md:mx-auto">
         {pendingBills.map(bill => {
           const isOverdue = todayDay > bill.dueDay;
           return (
-            <div
-              key={bill.id}
-              className={`rounded-2xl p-4 flex flex-col gap-4 border ${
-                isOverdue
-                  ? 'bg-red-500/10 border-red-500/40'
-                  : 'bg-amber-500/10 border-amber-500/40'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2.5 rounded-xl ${isOverdue ? 'bg-red-500/20' : 'bg-amber-500/20'}`}>
-                    <Wallet className={`w-5 h-5 ${isOverdue ? 'text-red-400' : 'text-amber-400'}`} />
+            <div key={bill.id} className={`glass-card p-5 border ${isOverdue ? 'border-red-500/30 bg-red-500/5' : 'border-amber-500/30 bg-amber-500/5'}`}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  <div className={`p-3 rounded-2xl ${isOverdue ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                    <Wallet className="w-6 h-6" />
                   </div>
                   <div>
-                    <div className={`font-bold text-sm ${isOverdue ? 'text-red-400' : 'text-amber-400'}`}>
-                      {isOverdue ? '⚠️ Overdue:' : '🔔 Due Today:'} {bill.name}
+                    <div className={`font-bold tracking-wide ${isOverdue ? 'text-red-400' : 'text-amber-400'}`}>
+                      {isOverdue ? 'OVERDUE' : 'DUE TODAY'}: {bill.name.toUpperCase()}
                     </div>
-                    <div className={`text-xs ${isOverdue ? 'text-red-200/70' : 'text-amber-200/70'}`}>
-                      {formatINR(bill.amount)} • Due on {bill.dueDay}{['st','nd','rd'][bill.dueDay - 1] || 'th'} every month
+                    <div className="text-sm text-gray-400 mt-0.5">
+                      {formatINR(bill.amount)} • Auto-reminder
                     </div>
                   </div>
                 </div>
-                <button onClick={() => handleDismissBill(bill)} className="text-gray-500 hover:text-white p-1 rounded-lg transition-colors">
-                  <X className="w-4 h-4" />
+                <button onClick={() => handleDismissBill(bill)} className="text-gray-500 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors">
+                  <X className="w-5 h-5" />
                 </button>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleMarkPaid(bill)}
-                  className={`flex-1 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-all ${
-                    isOverdue
-                      ? 'bg-red-500 text-white hover:bg-red-400'
-                      : 'bg-amber-500 text-darkBg hover:bg-amber-400'
-                  }`}
-                >
-                  <CheckCircle2 className="w-4 h-4" /> Mark as Paid
-                </button>
-                <button
-                  onClick={() => setModalState({ type: 'expense', data: { category: bill.category, amount: bill.amount } })}
-                  className="px-4 py-2.5 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 text-sm font-semibold transition-all flex items-center gap-1.5"
-                >
-                  <ArrowRight className="w-4 h-4" /> Edit
+              <div className="flex gap-3">
+                <button onClick={() => handleMarkPaid(bill)} className={`flex-1 py-4 rounded-[20px] font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-all ${isOverdue ? 'bg-red-500 text-white hover:bg-red-600 shadow-[0_0_15px_rgba(239,68,68,0.3)]' : 'bg-amber-500 text-darkBg hover:bg-amber-600 shadow-[0_0_15px_rgba(245,158,11,0.3)]'}`}>
+                  <CheckCircle2 className="w-4 h-4" /> MARK AS PAID
                 </button>
               </div>
             </div>
           );
         })}
 
-        {/* ── Interactive Friday Poojai Card ── */}
-        {isFriday && (
-          <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 flex flex-col gap-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-500/20 p-2.5 rounded-xl">
-                <Flame className="w-5 h-5 text-blue-400" />
-              </div>
-              <div>
-                <div className="font-bold text-blue-400">🙏 இன்று வெள்ளிக்கிழமை!</div>
-                <div className="text-xs text-blue-200/70">உங்கள் பூஜைக்கான தொகையை உள்ளிட்டு சேமிக்கவும்.</div>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <AmountInput
-                value={poojaiAmount}
-                onChange={e => setPoojaiAmount(e.target.value)}
-                className="flex-1 glass-input py-2.5 text-center font-bold text-lg"
-                placeholder="₹ தொகை"
-              />
-              <button
-                onClick={handlePoojaiSave}
-                className="bg-blue-500 text-white font-bold py-2.5 px-5 rounded-xl hover:bg-blue-400 active:scale-95 transition-all text-sm"
-              >
-                சேமி
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* ── Today's Profit (Kadai Mode) ──────────────────────────────── */}
-      {appMode === 'kadai' && !dbSetupRequired && !dbConnectionError && (
-        <div className="glass-card p-5 text-center flex flex-col items-center border border-neonEmerald/20 bg-gradient-to-br from-darkCard to-neonEmerald/5">
-          <div className="text-sm font-semibold text-gray-400 mb-1">{t('todaysProfit')} {t('kadaiMode')}</div>
-          <div className={`text-4xl font-black tracking-tighter ${todaysProfit >= 0 ? 'text-neonEmerald' : 'text-neonRose'}`}>
-            {formatINR(todaysProfit)}
-          </div>
+      {/* ── Recent Transactions (Constrained Height & Overflow) ────────── */}
+      <div className="bg-white dark:bg-[#1e293b]/10 border border-slate-200/80 dark:border-white/[0.05] rounded-3xl p-5 flex flex-col h-[380px] overflow-hidden shadow-[0_8px_30px_rgba(15,23,42,0.015)] md:max-w-2xl lg:max-w-5xl md:mx-auto">
+        <h2 className={`text-sm font-bold text-gray-400 mb-4 ml-1 ${language === 'ta' ? 'tracking-normal leading-relaxed' : 'tracking-widest uppercase'}`}>{t('recent_activity')}</h2>
+        
+        {/* The Height Constraint Matrix */}
+        <div className="w-full max-h-[380px] overflow-y-auto pr-1 space-y-3 scrollbar-thin scrollbar-thumb-slate-200/60 dark:scrollbar-thumb-white/[0.05]">
+          {dashboardFinalFeed.length === 0 ? (
+            <div className="text-center text-gray-500 py-10 text-sm glass-card h-full flex items-center justify-center">No recent activity.</div>
+          ) : (
+            dashboardFinalFeed.map((tx, idx) => {
+              const isIncome = tx.type === 'income';
+              const isToday = new Date(tx.date).toDateString() === today.toDateString();
+              const timeStr = new Date(tx.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              const dateStr = isToday ? `Today, ${timeStr}` : `${new Date(tx.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${timeStr}`;
+              
+              return (
+                <div key={tx.id} 
+                  className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-white/[0.02] border border-slate-200/60 dark:border-white/[0.04] rounded-xl select-none cursor-default"
+                  style={{ '--row-index': idx }}
+                >
+                  {/* Left Side: Description & Timestamp */}
+                  <div className="flex flex-col min-w-0 flex-1 pr-4">
+                    <div className={`font-sans font-bold text-sm text-[#0f172a] dark:text-slate-100 truncate tracking-tight ${language === 'ta' ? 'leading-relaxed tracking-normal' : ''}`}>{tx.desc || tc(tx.category)}</div>
+                    <div className="text-xs text-[#0f172a]/70 dark:text-slate-400 font-semibold mt-1">{dateStr}</div>
+                  </div>
+
+                  {/* Center: Subtle Badge */}
+                  <div className={`hidden sm:flex shrink-0 px-3 py-1 rounded-lg bg-slate-100/80 dark:bg-white/[0.03] text-[#0f172a]/70 dark:text-slate-400 text-[11px] font-bold mr-4 ${language === 'ta' ? 'tracking-normal leading-relaxed' : 'tracking-widest uppercase'}`}>
+                    [{tc(tx.category)}]
+                  </div>
+
+                  {/* Right Side: Luminous Amount */}
+                  <div className={`text-xl md:text-2xl font-extrabold font-sans flex-shrink-0 tracking-tight ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                    {isIncome ? '+' : '-'}{formatINR(tx.amount)}
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
-      )}
+      </div>
 
       {/* ── Financial Health ─────────────────────────────────────────── */}
-      {!dbSetupRequired && !dbConnectionError && <FinancialHealth />}
+      {!dbSetupRequired && !dbConnectionError && (
+        <div className="px-2 md:max-w-4xl lg:max-w-5xl md:mx-auto">
+          <FinancialHealth />
+        </div>
+      )}
 
       <Modal
         isOpen={modalState.type !== null}

@@ -2,23 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800;900&display=swap');
+
 @layer base {
   body {
-    @apply bg-darkBg text-white antialiased selection:bg-neonEmerald selection:text-white;
+    @apply bg-[#F8FAFC] text-slate-900 dark:bg-darkBg dark:text-white antialiased selection:bg-neonEmerald selection:text-white font-sans transition-colors duration-500;
   }
 }
 
 @layer components {
   .glass-card {
-    @apply bg-darkCard/60 backdrop-blur-md border border-white/10 rounded-2xl shadow-xl transition-all duration-300;
+    @apply bg-white/80 dark:bg-darkCard/70 backdrop-blur-[25px] border border-slate-200 dark:border-white/5 rounded-[20px] shadow-lg dark:shadow-2xl transition-all duration-300;
   }
   
   .glass-input {
-    @apply w-full bg-darkBg/50 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-neonEmerald focus:ring-1 focus:ring-neonEmerald transition-all;
+    @apply w-full bg-slate-100 dark:bg-darkBg/50 border border-slate-200 dark:border-white/20 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-400 focus:outline-none focus:border-neonEmerald focus:ring-1 focus:ring-neonEmerald transition-all;
   }
   
   .btn-neon {
-    @apply font-semibold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95;
+    @apply font-semibold py-4 px-6 rounded-[20px] transition-all duration-300 transform active:scale-[0.97] active:opacity-90;
   }
   
   .btn-emerald {
@@ -59,6 +61,39 @@
   /* ── Micro-interaction: amount input focus ring glow ── */
   .amount-glow:focus {
     box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25), 0 0 16px rgba(16, 185, 129, 0.15);
+  }
+
+  /* ── Micro-interaction: Spin animation for sync ── */
+  .spin-fast {
+    animation: spinFast 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+  @keyframes spinFast {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* ── Infinite Marquee Scroll ── */
+  .animate-marquee {
+    animation: marquee 20s linear infinite;
+  }
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  /* ── Custom Premium Scrollbar for overflow containers ── */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(30, 41, 59, 0.5); /* slate-800 equivalent with opacity */
+    border-radius: 10px;
+  }
+  .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: rgba(51, 65, 85, 0.8); /* slate-700 on hover */
   }
 
   /* ── Utility: safe-area padding for notched phones ── */

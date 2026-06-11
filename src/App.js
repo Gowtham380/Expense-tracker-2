@@ -6,16 +6,70 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import HistoryPage from './pages/HistoryPage';
 import SettingsPage from './pages/SettingsPage';
 import LoginPage from './components/LoginPage';
+import OnboardingScreen from './components/OnboardingScreen';
 import Toast from './components/Toast';
 
 // Internal router to manage bottom nav
 const AppShell = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
-  const { isSyncing, session, isAuthLoading } = useExpense();
+  const { isSyncing, session, isAuthLoading, isSyncComplete, securePin, customCategories, recurringReminders, addSale, addExpense, language } = useExpense();
+
+  // Background Evaluation Loop Hook for Automated Reminders
+  React.useEffect(() => {
+    window.triggerTestNotification = () => {
+      // Forcefully ignore today's real machine date and simulate an active match alert
+      const taMsg = "திட்டமிடப்பட்ட நினைவூட்டல்: Rent-க்கான ₹10,000-ஐப் பதிவு செய்ய கிளிக் செய்யவும்!";
+      const enMsg = "Scheduled Entry Alert: Tap to log your monthly ₹10,000 for Rent.";
+      // Assuming a generic showToast function from context, or fallback to alert if toast doesn't have .info
+      if (window.showToast) {
+        window.showToast(language === 'ta' ? taMsg : enMsg, 'info');
+      } else {
+        alert(language === 'ta' ? taMsg : enMsg);
+      }
+    };
+
+    if (!isSyncComplete || !recurringReminders || recurringReminders.length === 0) return;
+    const today = new Date();
+    const todayDate = today.getDate();
+    const currentMonthKey = `${today.getFullYear()}-${today.getMonth()}`;
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+
+    recurringReminders.forEach(rem => {
+      const fireKey = `rem_fired_${rem.id}_${currentMonthKey}`;
+      
+      let isTriggerDay = false;
+      if (rem.frequency === 'end_of_month') {
+        isTriggerDay = (todayDate === lastDayOfMonth);
+      } else {
+        // Fallback to standard day-based evaluation
+        isTriggerDay = (todayDate >= (rem.targetDay || rem.day));
+      }
+
+      if (isTriggerDay && !localStorage.getItem(fireKey)) {
+        const isoDate = today.toISOString().split('T')[0];
+        if (rem.type === 'income') {
+          addSale(rem.amount, rem.category || 'Salary', `Automated Reminder: ${rem.category}`, isoDate);
+        } else {
+          addExpense(rem.amount, rem.category || 'Misc', `Automated Reminder: ${rem.category}`, isoDate);
+        }
+        localStorage.setItem(fireKey, 'true');
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSyncComplete, recurringReminders, addSale, addExpense]);
+
+  const expenseCount = (customCategories || []).filter(c => c.type === 'expense').length;
+  const incomeCount = (customCategories || []).filter(c => c.type === 'income').length;
+  const showInitializationGate = expenseCount === 0 || incomeCount === 0;
 
   // The Auth-Gate Protector: Show UI during auth load, drop to login only if confirmed NO session.
   if (!isAuthLoading && !session) {
     return <LoginPage />;
+  }
+
+  // The Onboarding Gate: If logged in but no PIN is set, or missing required categories, force onboarding
+  if (!isAuthLoading && session && isSyncComplete && (!securePin || showInitializationGate)) {
+    return <OnboardingScreen missingCategories={showInitializationGate} />;
   }
 
   const renderPage = () => {

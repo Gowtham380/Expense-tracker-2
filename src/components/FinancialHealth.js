@@ -68,7 +68,7 @@ export default function FinancialHealth() {
   const healthLabel = isTA ? 'நிதி நிலைமை' : 'Financial Status';
 
   return (
-    <div className="glass-card w-full mb-6 relative overflow-hidden flex flex-col">
+    <div className="bg-white dark:bg-[#1e293b]/10 border border-slate-200/80 dark:border-white/[0.05] shadow-[0_8px_30px_rgba(15,23,42,0.015)] rounded-2xl p-5 w-full mb-6 relative overflow-hidden flex flex-col">
       <div className="absolute top-0 right-0 w-32 h-32 bg-neonEmerald/10 rounded-full blur-3xl -mr-16 -mt-16" />
       
       {/* Alerts */}
@@ -82,7 +82,7 @@ export default function FinancialHealth() {
         </div>
       )}
 
-      <div className="p-6">
+      <div className="w-full mt-2">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-bold flex items-center gap-2">
             <PiggyBank className="text-neonEmerald w-6 h-6" />
@@ -101,27 +101,27 @@ export default function FinancialHealth() {
           ) : (
             <div className="flex items-center gap-4 cursor-pointer" onClick={() => { setTempTarget(savingsTarget || 0); setIsEditingTarget(true); }}>
               <div className="text-sm text-gray-400">{targetLabel}</div>
-              <div className="font-bold text-lg text-emerald-400">{formatINR(savingsTarget || 0)}</div>
+              <div className="font-extrabold text-lg text-emerald-600 dark:text-emerald-400">{formatINR(savingsTarget || 0)}</div>
             </div>
           )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <div className="bg-darkBg/50 p-4 rounded-xl border border-white/5">
+          <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-white/[0.04] p-4 rounded-xl">
             <div className="text-gray-400 text-sm mb-1 flex items-center gap-2">
-              <TrendingUp className="text-neonEmerald w-4 h-4" /> {isTA ? 'வருமானம்' : 'Income'}
+              <TrendingUp className="text-emerald-600 dark:text-emerald-400 w-4 h-4" /> {isTA ? 'வருமானம்' : 'Income'}
             </div>
-            <div className="text-xl font-bold text-neonEmerald">{formatINR(totalIncome)}</div>
+            <div className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">{formatINR(totalIncome)}</div>
           </div>
-          <div className="bg-darkBg/50 p-4 rounded-xl border border-white/5">
+          <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-white/[0.04] p-4 rounded-xl">
             <div className="text-gray-400 text-sm mb-1 flex items-center gap-2">
-              <TrendingDown className="text-neonRose w-4 h-4" /> {isTA ? 'செலவு' : 'Expenses'}
+              <TrendingDown className="text-rose-600 dark:text-rose-400 w-4 h-4" /> {isTA ? 'செலவு' : 'Expenses'}
             </div>
-            <div className="text-xl font-bold text-neonRose">{formatINR(totalExpenses)}</div>
+            <div className="text-xl font-extrabold text-rose-600 dark:text-rose-400">{formatINR(totalExpenses)}</div>
           </div>
-          <div className="bg-darkBg/50 p-4 rounded-xl border border-white/5">
+          <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-white/[0.04] p-4 rounded-xl">
             <div className="text-gray-400 text-sm mb-1">{isTA ? 'எதிர்பார்க்கும் இருப்பு' : 'Predicted Balance'}</div>
-            <div className={`text-xl font-bold ${predictedEndBalance >= 0 ? 'text-neonEmerald' : 'text-neonRose'}`}>
+            <div className={`text-xl font-extrabold ${predictedEndBalance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
               {formatINR(predictedEndBalance)}
             </div>
           </div>
@@ -135,7 +135,7 @@ export default function FinancialHealth() {
                 {Math.max(0, progressPct).toFixed(1)}% {isTA ? 'அடையப்பட்டது' : 'Reached'}
               </span>
             </div>
-            <div className="w-full h-3 bg-darkBg rounded-full overflow-hidden border border-white/10 relative">
+            <div className="w-full h-3 bg-slate-100 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/[0.04] rounded-full overflow-hidden relative">
               <div 
                 className={`h-full transition-all duration-1000 ${
                   progressPct >= 100 ? 'bg-neonEmerald' : progressPct > 50 ? 'bg-emerald-400' : 'bg-amber-400'

@@ -7,7 +7,8 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import HistoryPage from './HistoryPage';
 import '@testing-library/jest-dom';
 
 // ─── Mock Supabase so no real network calls are made ─────────────────────────
@@ -38,14 +39,12 @@ jest.mock('../context/ExpenseContext', () => ({
     editTransaction:   mockEditTransaction,
     bulkDelete:        mockBulkDelete,
     isSyncing:  false,
-    appMode:    'kadai',
     language:   'en',
     t:  (key) => key,
     tc: (cat) => cat,
   }),
 }));
 
-import HistoryPage from './HistoryPage';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function renderPage() {
@@ -162,8 +161,7 @@ describe('HistoryPage — Summary Totals', () => {
 describe('HistoryPage — Password Gate', () => {
   test('clicking delete opens the password modal', () => {
     renderPage();
-    const deleteButtons = screen.getAllByRole('button', { hidden: true })
-      .filter(b => b.querySelector('svg')); // icon buttons
+
 
     // The password modal should not be visible initially
     expect(screen.queryByText('Confirm Action')).not.toBeInTheDocument();
@@ -173,7 +171,7 @@ describe('HistoryPage — Password Gate', () => {
     renderPage();
     // Simulate opening the modal by directly looking for the modal trigger approach
     // We find the first trash-icon button for tx-1
-    const allBtns = screen.getAllByRole('button', { hidden: true });
+
     // The trash buttons have aria-label or a specific class; we look for the one that calls requestAuth
     // Simulate through the password gate flow — look for password input after triggering
     // Since we can't easily click the trash (opacity-40 overlay), we simulate the modal
@@ -195,7 +193,9 @@ describe('HistoryPage — Bulk Selection', () => {
   test('clicking a row selects it (visual indication)', () => {
     renderPage();
     // Rows are clickable divs; clicking one adds indigo background class
+    // eslint-disable-next-line testing-library/no-node-access
     const row = screen.getByText('Morning sales').closest('[class*="cursor-pointer"]')
+      // eslint-disable-next-line testing-library/no-node-access
       || screen.getByText('Morning sales').closest('div');
     fireEvent.click(row);
     // After click, Delete Selected button should appear (since 1 item is selected)
@@ -212,6 +212,7 @@ describe('HistoryPage — Edit Form (inline)', () => {
     // Amount input for editing is only rendered when editingId is set
     // It should not exist initially (we use AmountInput which renders a number input)
     // There should be no glass-input fields visible at start
+    // eslint-disable-next-line testing-library/no-node-access
     const numberInputs = document.querySelectorAll('input[type="number"]');
     expect(numberInputs).toHaveLength(0);
   });

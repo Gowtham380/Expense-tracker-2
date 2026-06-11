@@ -3,13 +3,17 @@ module.exports = {
   content: [
     "./src/**/*.{js,jsx,ts,tsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"Google Product Sans"', 'Inter', 'Poppins', 'sans-serif'],
+      },
       colors: {
-        neonEmerald: '#10b981',
-        neonRose: '#f43f5e',
-        darkBg: '#0f172a',
-        darkCard: '#1e293b',
+        neonEmerald: '#10B981',
+        neonRose: '#EF4444',
+        darkBg: '#050709',
+        darkCard: '#0D1117',
       },
     },
   },
