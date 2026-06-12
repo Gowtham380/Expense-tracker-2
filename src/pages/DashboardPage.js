@@ -242,7 +242,7 @@ export default function DashboardPage() {
     // Sort descending by date and limit the count to top 5
     return recentOnly
       .sort((a, b) => new Date(b.created_at || `${b.date}T00:00:00`).getTime() - new Date(a.created_at || `${a.date}T00:00:00`).getTime())
-      .slice();
+      .slice(0,3);
   })();
 
   return (
