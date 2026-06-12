@@ -15,8 +15,21 @@ export default function HistoryPage() {
   const [fromDate, setFromDate]   = useState('');
   const [toDate, setToDate]       = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
-
+  const [showFilters, setShowFilters] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
+
+  // Auto-populate earliest date to today
+  useEffect(() => {
+    if (transactions && transactions.length > 0) {
+      // Sort to get the earliest date
+      const sorted = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+      const firstDate = sorted[0].date; // Format: YYYY-MM-DD
+      const today = new Date().toISOString().split('T')[0];
+      
+      setFromDate(prev => prev || firstDate);
+      setToDate(prev => prev || today);
+    }
+  }, [transactions]);
   const [editingId, setEditingId]     = useState(null);
   const [editForm, setEditForm]       = useState({});
 
@@ -204,7 +217,7 @@ export default function HistoryPage() {
   const categoryOptions = customCategories ? customCategories.map(c => c.name) : [...CATEGORIES.INCOME, ...CATEGORIES.PERSONAL];
 
   return (
-    <div className="space-y-4 animate-in fade-in pb-24">
+    <div className="w-full h-full flex flex-col relative animate-in fade-in pb-20 overflow-x-hidden">
 
       {/* ── Password Modal ─────────────────────────────────────────────── */}
       {showPwModal && (
@@ -243,76 +256,97 @@ export default function HistoryPage() {
       )}
 
       {/* ── Sticky Filter Header ──────────────────────────────────────── */}
-      <div className={`sticky top-0 z-40 bg-slate-50/90 dark:bg-[#0f172a]/90 backdrop-blur-md border-b border-slate-200/80 dark:border-white/[0.08] py-3.5 flex flex-col ${isScrolled ? 'px-4 space-y-2' : 'px-4 space-y-3'}`}>
-        {/* Title row */}
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Clock className={`text-emerald-600 dark:text-neonEmerald transition-all duration-300 ${isScrolled ? 'w-4 h-4' : 'w-5 h-5'}`} />
-            <h1 className={`font-bold text-slate-900 dark:text-white transition-all duration-300 ${isScrolled ? 'text-lg' : 'text-xl'}`}>{t('history')}</h1>
-            {isSyncing && <span className="flex items-center gap-1 text-xs text-neonEmerald animate-pulse"><RefreshCw className="w-3 h-3 animate-spin" /> Syncing…</span>}
+      <div className="sticky top-0 z-50 w-full bg-darkBg border-b border-slate-800/50 px-4 py-3 shadow-md">
+        <div className="flex gap-2 items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder={t('search')} 
+              value={search} 
+              onChange={e => setSearch(e.target.value)} 
+              className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
+            />
+            {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>}
           </div>
-          <div className="flex items-center gap-3">
-            <button onClick={handlePrint} title="Print / Export PDF"
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 dark:text-emerald-400 border border-emerald-500/20 dark:border-emerald-500/30 rounded-xl text-xs font-black tracking-wide transition-all active:scale-[0.97] cursor-pointer">
-              <FileText className="w-3.5 h-3.5" /> PDF
-            </button>
-            {selectedIds.size > 0 && (
-              <button onClick={handleBulkDelete} className="btn-rose py-1 px-2.5 flex items-center gap-1.5 text-xs font-bold">
-                <Trash2 className="w-3.5 h-3.5" /> ({selectedIds.size})
-              </button>
-            )}
-            {hasActiveFilters && (
-              <button onClick={clearFilters} className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-all">
-                <XCircle className="w-3.5 h-3.5" /> Clear
-              </button>
-            )}
-          </div>
+          <button 
+            onClick={() => setShowFilters(!showFilters)} 
+            className={`p-2.5 rounded-xl border transition-colors ${showFilters ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : 'bg-slate-800/50 border-slate-700/50 text-slate-400'}`}
+          >
+            <Filter className="w-5 h-5" />
+          </button>
         </div>
 
-        {/* Search */}
-        <div className={`transition-all duration-300 overflow-hidden ${isScrolled ? 'h-0 opacity-0' : 'h-10 opacity-100'}`}>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input type="text" placeholder={t('search')} value={search} onChange={e => setSearch(e.target.value)} className="glass-input pl-9 w-full py-2 text-sm" />
-            {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"><X className="w-4 h-4" /></button>}
-          </div>
-        </div>
-
-        {/* Date + Type row (Stays visible, compact horizontal scroll layout) */}
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide w-full items-center">
-          <div className="flex items-center gap-2 shrink-0 bg-white text-[#0f172a] dark:bg-slate-900 dark:text-white border border-slate-300 dark:border-white/[0.12] focus-within:border-slate-500 rounded-xl px-3 py-2 text-xs font-bold tracking-wide transition-all">
-            <Filter className="w-3.5 h-3.5 text-[#0f172a]/50 dark:text-slate-400" />
-            <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="bg-transparent text-[#0f172a] dark:text-white focus:outline-none cursor-pointer" title="From (optional)" placeholder="From" />
-          </div>
-          <div className="flex items-center gap-2 shrink-0 bg-white text-[#0f172a] dark:bg-slate-900 dark:text-white border border-slate-300 dark:border-white/[0.12] focus-within:border-slate-500 rounded-xl px-3 py-2 text-xs font-bold tracking-wide transition-all">
-            <Filter className="w-3.5 h-3.5 text-[#0f172a]/50 dark:text-slate-400" />
-            <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="bg-transparent text-[#0f172a] dark:text-white focus:outline-none cursor-pointer" title="To (optional)" placeholder="To" />
-          </div>
-          <div className="flex bg-[#38240D]/[0.04] p-1 rounded-xl border border-[#38240D]/[0.06] gap-1">
-            {[{ val: 'all', label: isTA ? 'அனைத்தும்' : 'All' }, { val: 'income', label: <TrendingUp className="w-4 h-4" /> }, { val: 'expense', label: <TrendingDown className="w-4 h-4" /> }].map(({ val, label }) => (
-              <button key={val} onClick={() => setTypeFilter(val)}
-                className={`flex-1 flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex-shrink-0 ${typeFilter === val ? 'bg-[#38240D] text-white shadow-md' : 'text-[#38240D]/60 hover:text-[#38240D] border-transparent'}`}>
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Summary */}
-        <div className={`transition-all duration-300 overflow-hidden ${isScrolled ? 'h-0 opacity-0' : 'h-6 opacity-100'}`}>
-          {filtered.length > 0 && (
-            <div className="flex items-center justify-between text-xs text-gray-400 pt-1 border-t border-white/5 w-full">
-              <span>{filtered.length} transaction{filtered.length !== 1 ? 's' : ''}</span>
-              <div className="flex gap-3">
-                <span className="text-neonEmerald font-semibold">+{formatINR(filteredIncome)}</span>
-                <span className="text-neonRose font-semibold">−{formatINR(filteredExpense)}</span>
-                <span className={`font-bold ${filteredIncome - filteredExpense >= 0 ? 'text-neonEmerald' : 'text-neonRose'}`}>Net {formatINR(filteredIncome - filteredExpense)}</span>
+        {/* --- COLLAPSIBLE DRAWER --- */}
+        {showFilters && (
+          <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 pb-2">
+            <div className="flex items-center justify-between">
+              <h1 className="font-bold text-white text-sm flex items-center gap-2">
+                <Clock className="w-4 h-4 text-emerald-500" /> {t('history')}
+                {isSyncing && <span className="flex items-center gap-1 text-xs text-emerald-500 animate-pulse ml-2"><RefreshCw className="w-3 h-3 animate-spin" /> Syncing...</span>}
+              </h1>
+              <div className="flex items-center gap-2">
+                <button onClick={handlePrint} title="Print / Export PDF"
+                  className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 rounded-lg text-xs font-bold transition-all active:scale-[0.97] cursor-pointer">
+                  <FileText className="w-3.5 h-3.5" /> PDF
+                </button>
+                {selectedIds.size > 0 && (
+                  <button onClick={handleBulkDelete} className="bg-rose-500/10 border border-rose-500/20 text-rose-400 py-1 px-2.5 rounded-lg flex items-center gap-1.5 text-xs font-bold">
+                    <Trash2 className="w-3.5 h-3.5" /> ({selectedIds.size})
+                  </button>
+                )}
+                {hasActiveFilters && (
+                  <button onClick={clearFilters} className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 transition-all">
+                    <XCircle className="w-3.5 h-3.5" /> Clear
+                  </button>
+                )}
               </div>
             </div>
-          )}
-        </div>
+
+            {/* Date row */}
+            <div className="flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] w-full items-center">
+              <div className="flex items-center gap-2 flex-1 bg-slate-800/50 border border-slate-700/50 rounded-xl px-3 py-2 text-xs font-bold">
+                <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="bg-transparent text-white focus:outline-none w-full cursor-pointer [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert" title="From" />
+              </div>
+              <div className="flex items-center gap-2 flex-1 bg-slate-800/50 border border-slate-700/50 rounded-xl px-3 py-2 text-xs font-bold">
+                <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="bg-transparent text-white focus:outline-none w-full cursor-pointer [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert" title="To" />
+              </div>
+            </div>
+
+            {/* Type Filter */}
+            <div className="flex bg-slate-800/50 border border-slate-700/50 rounded-xl p-1 gap-1">
+              {[{ val: 'all', label: isTA ? 'அனைத்தும்' : 'All' }, { val: 'income', label: <TrendingUp className="w-4 h-4 text-emerald-400" /> }, { val: 'expense', label: <TrendingDown className="w-4 h-4 text-rose-400" /> }].map(({ val, label }) => (
+                <button key={val} onClick={() => setTypeFilter(val)}
+                  className={`flex-1 flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex-shrink-0 ${
+                    typeFilter === val 
+                      ? val === 'income' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50' 
+                      : val === 'expense' ? 'bg-rose-500/20 text-rose-400 border-rose-500/50'
+                      : 'bg-slate-500/20 text-white border-slate-500/50'
+                      : 'text-slate-400 border-transparent hover:text-white'
+                  }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Summary (Always visible) */}
+        {filtered.length > 0 && (
+          <div className="flex items-center justify-between text-[10px] sm:text-xs text-slate-400 pt-2 mt-2 border-t border-slate-800/50 w-full overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <span className="whitespace-nowrap mr-3">{filtered.length} entry{filtered.length !== 1 ? 's' : ''}</span>
+            <div className="flex gap-2 sm:gap-3 whitespace-nowrap">
+              <span className="text-emerald-400 font-semibold">+{formatINR(filteredIncome)}</span>
+              <span className="text-rose-400 font-semibold">−{formatINR(filteredExpense)}</span>
+              <span className={`font-bold ${filteredIncome - filteredExpense >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>Net {formatINR(filteredIncome - filteredExpense)}</span>
+            </div>
+          </div>
+        )}
       </div>
 
+      {/* ── Scrollable Body Content ─────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-4 space-y-4 pt-4 pb-20">
+        
       {/* ── Transaction List ───────────────────────────────────────────── */}
       <div className="glass-card p-2 md:p-3 min-h-[40vh] mt-4">
         {filtered.length === 0 ? (
@@ -412,6 +446,7 @@ export default function HistoryPage() {
             ))}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

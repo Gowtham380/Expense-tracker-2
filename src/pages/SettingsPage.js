@@ -112,6 +112,17 @@ export default function SettingsPage() {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!currentUserObj?.email) return alert("Email not found in session.");
+    setPwStatus({ error: '', loading: true });
+    const { error } = await supabase.auth.resetPasswordForEmail(currentUserObj.email, {
+      redirectTo: `${window.location.origin}/update-password`,
+    });
+    setPwStatus({ error: '', loading: false });
+    if (error) alert(error.message);
+    else alert("Check your email for the reset link!");
+  };
+
   const handleUpdatePassword = () => {
     if (newPin !== confirmPin) return setPwStatus({ error: 'PINs do not match', loading: false });
     if (newPin.length < 4 || !/^\d*$/.test(newPin)) return setPwStatus({ error: 'Must be 4 digits', loading: false });
@@ -131,13 +142,20 @@ export default function SettingsPage() {
       <header className="px-4 md:px-8 py-6">
         <div className="flex items-center justify-between p-4 bg-white dark:bg-transparent rounded-2xl border border-slate-200/50 dark:border-none shadow-[0_4px_24px_rgba(15,23,42,0.015)] dark:shadow-none">
           <div className="flex items-center gap-4">
-            {resolvedProfilePicUrl && !imgError ? (
-              <img src={resolvedProfilePicUrl} alt="Profile" onError={() => setImgError(true)} className="w-10 h-10 rounded-full border border-slate-200 dark:border-white/10 object-cover flex-shrink-0 shadow-sm" />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center font-bold text-white text-lg border border-white/10 flex-shrink-0 shadow-sm">
-                {layoutLetterInitial}
-              </div>
-            )}
+            <div className="relative shrink-0">
+              {resolvedProfilePicUrl && !imgError ? (
+                <img 
+                  src={resolvedProfilePicUrl} 
+                  alt="Profile" 
+                  onError={() => setImgError(true)}
+                  className="w-14 h-14 shrink-0 rounded-full border-2 border-slate-700 object-cover aspect-square shadow-lg" 
+                />
+              ) : (
+                <div className="w-14 h-14 shrink-0 rounded-full bg-slate-800 flex items-center justify-center text-xl font-bold border-2 border-slate-700 text-white shadow-lg aspect-square">
+                  {currentUserObj?.email?.charAt(0).toUpperCase() || 'U'}
+                </div>
+              )}
+            </div>
             <h1 className="text-slate-900 dark:text-white font-bold text-base">{calculatedProfileName}</h1>
           </div>
           <button onClick={handleLogout} className="flex items-center gap-2 bg-[#38240D]/[0.06] hover:bg-[#38240D]/[0.1] text-[#38240D] dark:bg-white/[0.05] dark:text-slate-300 text-xs font-bold px-3 py-1.5 rounded-lg transition-all">
@@ -173,6 +191,7 @@ export default function SettingsPage() {
                 {pwStatus.error && <p className="text-[10px] text-rose-400 font-medium">{pwStatus.error}</p>}
                 <div className="flex gap-2 pt-1">
                   <button onClick={handleVerifyCurrent} disabled={pwStatus.loading} className="flex-1 bg-slate-100 hover:bg-white text-slate-900 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50">{t('verify_identity')}</button>
+                  <button onClick={handleResetPassword} disabled={pwStatus.loading} className="bg-transparent border border-white/10 hover:bg-white/5 text-slate-400 py-2 px-4 rounded-xl text-xs font-bold transition-all disabled:opacity-50">Forgot PIN?</button>
                 </div>
               </div>
             )}

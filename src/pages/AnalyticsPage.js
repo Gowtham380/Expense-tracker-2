@@ -37,7 +37,21 @@ export default function AnalyticsPage() {
   const [fromDate, setFromDate]   = useState('');
   const [toDate, setToDate]       = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [preset, setPreset]       = useState('month');
+  const [preset, setPreset]       = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Auto-populate earliest date to today
+  useEffect(() => {
+    if (transactions && transactions.length > 0) {
+      // Sort to get the earliest date
+      const sorted = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+      const firstDate = sorted[0].date; // Format: YYYY-MM-DD
+      const today = new Date().toISOString().split('T')[0];
+      
+      setFromDate(prev => prev || firstDate);
+      setToDate(prev => prev || today);
+    }
+  }, [transactions]);
 
   // Sticky Scroll Logic
   const [isScrolled, setIsScrolled] = useState(false);
@@ -128,68 +142,83 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <div className="space-y-5 animate-in fade-in pb-20">
+    <div className="w-full h-full flex flex-col relative animate-in fade-in pb-20 overflow-x-hidden">
 
       {/* ── Sticky Filter Header ──────────────────────────────────────── */}
-      <div className={`sticky top-0 z-30 transition-all duration-300 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-b border-[#38240D]/[0.08] dark:border-white/10 flex flex-col ${isScrolled ? 'bg-white/90 dark:bg-slate-900/80 py-2.5 px-4 space-y-2' : 'bg-white dark:bg-slate-900/40 border border-[#38240D]/[0.08] dark:border-white/[0.05] p-3 rounded-2xl shadow-sm space-y-3 m-2'}`}>
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <BarChart3 className={`text-emerald-600 dark:text-neonEmerald transition-all duration-300 ${isScrolled ? 'w-4 h-4' : 'w-5 h-5'}`} />
-            <h1 className={`font-bold text-slate-900 dark:text-white transition-all duration-300 ${isScrolled ? 'text-lg' : 'text-xl'}`}>{t('analytics')}</h1>
+      <div className="sticky top-0 z-50 w-full bg-darkBg border-b border-slate-800/50 px-4 py-3 shadow-md">
+        <div className="flex gap-2 items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder={t('search')} 
+              value={search} 
+              onChange={e => setSearch(e.target.value)} 
+              className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
+            />
+            {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>}
           </div>
-          <div className="flex items-center gap-3">
-            {hasActiveFilters && (
-              <button onClick={clearFilters} className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-all">
-                <XCircle className="w-3.5 h-3.5" /> Clear
-              </button>
-            )}
-          </div>
+          <button 
+            onClick={() => setShowFilters(!showFilters)} 
+            className={`p-2.5 rounded-xl border transition-colors ${showFilters ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : 'bg-slate-800/50 border-slate-700/50 text-slate-400'}`}
+          >
+            <Filter className="w-5 h-5" />
+          </button>
         </div>
 
-        {/* Search */}
-        <div className={`transition-all duration-300 overflow-hidden ${isScrolled ? 'h-0 opacity-0' : 'h-10 opacity-100'}`}>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#38240D]/50 w-4 h-4" />
-            <input type="text" placeholder={t('search')} value={search} onChange={e => setSearch(e.target.value)} className="bg-[#38240D]/[0.02] dark:bg-slate-800 text-[#38240D] dark:text-white border border-[#38240D]/[0.12] dark:border-white/[0.08] rounded-xl px-3 py-2 text-xs font-bold pl-9 w-full outline-none" />
-            {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#38240D]/50 hover:text-[#38240D]"><X className="w-4 h-4" /></button>}
-          </div>
-        </div>
+        {/* --- COLLAPSIBLE DRAWER --- */}
+        {showFilters && (
+          <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 pb-2">
+            <div className="flex items-center justify-between">
+              <h1 className="font-bold text-white text-sm flex items-center gap-2"><BarChart3 className="w-4 h-4 text-emerald-500" /> {t('analytics')}</h1>
+              {hasActiveFilters && (
+                <button onClick={clearFilters} className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 transition-all">
+                  <XCircle className="w-3.5 h-3.5" /> Clear
+                </button>
+              )}
+            </div>
 
-        {/* Date + Type row */}
-        <div className={`transition-all duration-300 overflow-hidden flex flex-col sm:flex-row gap-2 ${isScrolled ? 'h-0 opacity-0 !mt-0' : 'h-10 sm:h-auto opacity-100'}`}>
-          <div className="flex items-center gap-2 flex-1 bg-[#38240D]/[0.02] dark:bg-slate-800 border border-[#38240D]/[0.12] dark:border-white/[0.08] rounded-xl px-3 py-2 text-xs font-bold">
-            <Filter className="w-3.5 h-3.5 text-[#38240D]/50" />
-            <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setPreset(''); }} className="bg-transparent text-[#38240D] dark:text-white focus:outline-none w-full cursor-pointer" title="From (optional)" placeholder="From" />
-          </div>
-          <div className="flex items-center gap-2 flex-1 bg-[#38240D]/[0.02] dark:bg-slate-800 border border-[#38240D]/[0.12] dark:border-white/[0.08] rounded-xl px-3 py-2 text-xs font-bold">
-            <Filter className="w-3.5 h-3.5 text-[#38240D]/50" />
-            <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setPreset(''); }} className="bg-transparent text-[#38240D] dark:text-white focus:outline-none w-full cursor-pointer" title="To (optional)" placeholder="To" />
-          </div>
-          <div className="flex bg-[#38240D]/[0.02] dark:bg-slate-800 border border-[#38240D]/[0.12] dark:border-white/[0.08] rounded-xl p-1 gap-1">
-            {[{ val: 'all', label: isTA ? 'அனைத்தும்' : 'All' }, { val: 'income', label: <TrendingUp className="w-4 h-4" /> }, { val: 'expense', label: <TrendingDown className="w-4 h-4" /> }].map(({ val, label }) => (
-              <button key={val} onClick={() => setTypeFilter(val)}
-                className={`flex-1 flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex-shrink-0 ${typeFilter === val ? val === 'income' ? 'bg-[#38240D] text-white border-[#38240D]' : val === 'expense' ? 'bg-[#38240D] text-white border-[#38240D]' : 'bg-[#38240D] text-white border-[#38240D]' : 'text-[#38240D]/60 border-transparent hover:text-[#38240D]'}`}>
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
+            {/* Date row */}
+            <div className="flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] w-full items-center">
+              <div className="flex items-center gap-2 flex-1 bg-slate-800/50 border border-slate-700/50 rounded-xl px-3 py-2 text-xs font-bold">
+                <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setPreset(''); }} className="bg-transparent text-white focus:outline-none w-full cursor-pointer [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert" title="From" />
+              </div>
+              <div className="flex items-center gap-2 flex-1 bg-slate-800/50 border border-slate-700/50 rounded-xl px-3 py-2 text-xs font-bold">
+                <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setPreset(''); }} className="bg-transparent text-white focus:outline-none w-full cursor-pointer [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert" title="To" />
+              </div>
+            </div>
 
-        {/* Quick Presets (Always visible, horizontal scroll) */}
-        <div className="flex overflow-x-auto scrollbar-hide bg-slate-200/60 dark:bg-slate-900/50 p-1 rounded-xl border border-slate-300/40 dark:border-white/[0.04] items-center w-full">
-          {PRESETS.map(p => (
-            <button
-              key={p.id}
-              onClick={() => handlePresetClick(p.id)}
-              className={`whitespace-nowrap flex-1 text-center transition-all flex-shrink-0 ${preset === p.id ? 'bg-white dark:bg-slate-800 text-[#0f172a] dark:text-white font-bold text-xs shadow-[0_2px_10px_rgba(15,23,42,0.06)] py-2 px-4 rounded-lg' : 'text-[#0f172a]/60 dark:text-slate-400 font-bold text-xs py-2 px-4 hover:text-[#0f172a] dark:hover:text-white'}`}
-            >
-              {isTA ? p.label : p.labelEn}
-            </button>
-          ))}
-        </div>
+            {/* Type Filter */}
+            <div className="flex bg-slate-800/50 border border-slate-700/50 rounded-xl p-1 gap-1">
+              {[{ val: 'all', label: isTA ? 'அனைத்தும்' : 'All' }, { val: 'income', label: <TrendingUp className="w-4 h-4 text-emerald-400" /> }, { val: 'expense', label: <TrendingDown className="w-4 h-4 text-rose-400" /> }].map(({ val, label }) => (
+                <button key={val} onClick={() => setTypeFilter(val)}
+                  className={`flex-1 flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex-shrink-0 ${
+                    typeFilter === val 
+                      ? val === 'income' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50' 
+                      : val === 'expense' ? 'bg-rose-500/20 text-rose-400 border-rose-500/50'
+                      : 'bg-slate-500/20 text-white border-slate-500/50'
+                      : 'text-slate-400 border-transparent hover:text-white'
+                  }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Quick Presets */}
+            <div className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] bg-slate-800/50 p-1 rounded-xl border border-slate-700/50 items-center w-full">
+              {PRESETS.map(p => (
+                <button key={p.id} onClick={() => handlePresetClick(p.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all flex-shrink-0 border ${preset === p.id ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50' : 'text-slate-400 border-transparent hover:text-white'}`}>
+                  {isTA ? p.label : p.labelEn}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="px-4 space-y-5">
+      {/* ── Scrollable Body Content ─────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-4 space-y-5 pt-5">
         
         {/* ── Profit/Loss Summary (Filtered) ────────────────────────────── */}
         <div className="bg-white dark:bg-[#1e293b]/50 border border-slate-200/80 dark:border-white/[0.05] p-6 rounded-2xl shadow-sm text-center mt-4">

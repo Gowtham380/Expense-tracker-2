@@ -31,7 +31,8 @@ export default function Modal({ isOpen, onClose, type, initialData }) {
     
     if (initialData?.category) {
        setCategory(initialData.category);
-        setCategory(activeOptions[0]?.name || 'Others');
+    } else {
+       setCategory('');
     }
     
     setNote('');
@@ -62,6 +63,12 @@ export default function Modal({ isOpen, onClose, type, initialData }) {
     today.setHours(23, 59, 59, 999);
     if (parsedDate > today) {
       showToast('Date cannot be in the future.', 'error');
+      return;
+    }
+
+    // ── Category validation ──────────────────────────────────────────────────
+    if (!category) {
+      showToast('Please select a category.', 'error');
       return;
     }
 
@@ -123,7 +130,9 @@ export default function Modal({ isOpen, onClose, type, initialData }) {
               value={category} 
               onChange={(e) => setCategory(e.target.value)}
               className="glass-input [&>optgroup]:bg-darkCard [&>option]:bg-darkCard py-3 text-lg"
+              required
             >
+              <option value="" disabled>Select Category</option>
               {isIncome ? (
                 (customCategories?.filter(c => c.type === 'income') || []).map(c => <option key={c.name} value={c.name}>{tc(c.name)}</option>)
               ) : (
@@ -134,25 +143,28 @@ export default function Modal({ isOpen, onClose, type, initialData }) {
             </select>
           </div>
 
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="block text-sm text-gray-400 mb-1">Date</label>
+          <div className="flex gap-3 w-full">
+            {/* Date Container - 40% Width */}
+            <div className="w-[40%] flex flex-col">
+              <label className="text-sm text-slate-400 mb-1">Date</label>
               <input 
                 type="date" 
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="glass-input py-3"
+                className="bg-darkBg border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-emerald-500 w-full" 
               />
             </div>
-            <div className="flex-1">
-              <label className="block text-sm text-gray-400 mb-1">Note (Optional)</label>
+
+            {/* Note Container - 60% Width */}
+            <div className="w-[60%] flex flex-col">
+              <label className="text-sm text-slate-400 mb-1">Note</label>
               <input 
                 type="text" 
+                placeholder="(Optional)"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                className="glass-input py-3"
-                placeholder="..."
+                className="bg-darkBg border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-emerald-500 w-full placeholder-slate-600" 
               />
             </div>
           </div>

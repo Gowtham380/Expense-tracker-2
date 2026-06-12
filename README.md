@@ -17,34 +17,21 @@
 
 ## ✨ Core Engine Capabilities
 
-- **🧠 Dynamic Trend Intelligence:** Advanced mathematical engines continuously calculate daily and monthly financial trajectories. Features color-coded psychology indicators (🟢 Emerald for positive trends, 🔴 Rose for negative alerts).
-- **📄 Automated PDF Reporting:** Instantly generate and export comprehensive transaction histories and financial summaries into professionally formatted PDF documents for offline auditing and sharing.
-- **⚡ Zero-Failure Data Pipeline:** Robust PostgreSQL schema alignment guarantees flawless data hydration. Strict schema validation ensures a 0-error console environment during runtime.
-- **🛡️ Bulletproof Cloud Security:** 100% serverless data persistence powered by Supabase. Implements strict Row Level Security (RLS) policies to guarantee absolute tenant data isolation.
-- **🌗 Adaptive UI/UX Matrix:** Perfectly balanced Light/Dark mode matrices with high-contrast tactile interaction nodes. Seamless overflow scrolling for massive transaction logs.
-- **🌍 Bilingual Architecture:** Built-in English and Tamil (தமிழ்) context switching, designed specifically for enhanced local accessibility and seamless user experience.
-- **🧮 Smart Embedded Calculator:** Tactical mathematical keypad embedded directly into the transaction forms for instant evaluations.
+- **🧠 Dynamic Trend Intelligence:** Advanced mathematical engines continuously calculate daily and monthly financial trajectories.
+- **📄 Automated PDF Reporting:** Instantly generate and export comprehensive transaction histories into professionally formatted PDF documents.
+- **🛡️ Bulletproof Cloud Security:** 100% serverless data persistence powered by Supabase with Row Level Security (RLS).
+- **🔐 Enterprise Auth Flow:** Secure Google OAuth integration with a robust **Password/PIN Reset Mechanism** to ensure account recovery via encrypted email tokens.
+- **🌍 Bilingual Architecture:** Built-in English and Tamil (தமிழ்) context switching.
+- **🧮 Smart Embedded Calculator:** Tactical mathematical keypad embedded directly into the transaction forms.
 
 ---
 
 ## 📖 How to Use (User Guide)
 
-**1. Dashboard Operations:**
-- Click **Add Income** (Green button) to log daily revenue, salary, or credits.
-- Click **Add Expense** (Red button) to log purchases, bills, or miscellaneous spending.
-- View real-time "Today vs Yesterday" trends directly on the dashboard cards.
-
-**2. Analytics & Reporting:**
-- Navigate to the **Analytics** tab to view your Net Financial Status.
-- Use the Date Filter (This Month, Last Month, Current Year) to dynamically calculate profit/loss margins.
-
-**3. History & Export:**
-- Go to the **History** tab to see a complete chronological ledger of all transactions.
-- Click the **PDF** button at the top right to instantly download a formatted financial report for auditing.
-
-**4. Settings & Localization:**
-- Use the **Settings** tab to toggle between Light/Dark mode.
-- Switch the app language between **English** and **Tamil (தமிழ்)** for better accessibility.
+1. **Dashboard:** Log Income/Expenses instantly with real-time trend updates.
+2. **Analytics:** Use the **Filter System** to visualize your financial trajectory by Date, Month, or Year. 
+3. **History & Export:** Access chronological ledgers and click **PDF** to download your financial report.
+4. **Account Recovery:** If you forget your Security PIN, navigate to **Settings > Sign Out > Forgot Password** to trigger a secure reset link to your registered email.
 
 ---
 
@@ -52,31 +39,21 @@
 
 | Component | Technology Stack |
 | :--- | :--- |
-| **Frontend Framework** | React.js, Custom Hooks (Context API) |
-| **Styling & UI Elements** | Tailwind CSS, Lucide React (SVG Icons) |
-| **Document Generation** | React-to-PDF / JSPDF |
-| **Backend & Database** | Supabase (PostgreSQL), RESTful PostgREST APIs |
-| **Authentication** | Supabase Auth (Session Management) |
-| **Deployment Pipeline** | Vercel (CI/CD optimized) |
-
----
-
-## 👨‍💻 Architectural Engineering Impact
-
-* **State Optimization:** Re-engineered deeply nested prop-drilling into a clean, centralized `ExpenseContext` architecture.
-* **Network Efficiency:** Eliminated phantom API calls and PostgREST 400 Bad Requests by strictly syncing React hydration payloads with the live database schema.
-* **Component Reusability:** Modularized dashboard, analytics, and history feeds to share the same dynamic timeframe-filtering logic.
+| **Frontend** | React.js, Tailwind CSS, Lucide React |
+| **Authentication** | Supabase Auth (OAuth + Email Reset Flow) |
+| **Backend & DB** | Supabase (PostgreSQL) |
+| **Document Engine** | React-to-PDF / JSPDF |
 
 ---
 
 ## 🚦 Getting Started (Local Setup)
 
-Follow these precise steps to spin up the architecture on your local machine:
-
-### 1. Clone the repository
+### 1. Clone & Install
 ```bash
 git clone [https://github.com/Gowtham380/Expense-tracker-2.git](https://github.com/Gowtham380/Expense-tracker-2.git)
 cd Expense-tracker-2
+npm install
+
 
 2. Install Dependencies
 ```bash

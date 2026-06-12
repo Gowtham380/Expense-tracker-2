@@ -110,7 +110,7 @@ function TickerMetrics({ todayIncome, todayExpenses, netProfit, incomeGrowth, ex
               <div className={`${bgClasses} p-4 md:p-6 lg:p-10 relative overflow-hidden group h-[200px] md:h-[240px] flex flex-col justify-center rounded-2xl backdrop-blur-md`}>
                 <div className={`absolute -right-10 -top-10 w-40 h-40 rounded-full blur-3xl transition-all duration-700 ${metric.bgGlowClass}`}></div>
                 <h3 className={`text-xs md:text-sm font-bold text-[#0f172a]/70 dark:text-slate-400 mb-2 md:mb-3 ${language === 'ta' ? 'tracking-normal leading-relaxed' : 'tracking-widest uppercase'}`}>{metric.title}</h3>
-                <div className={`text-3xl md:text-5xl lg:text-6xl ${textClasses} font-sans tracking-tight mb-3 md:mb-5 select-none`}>
+                <div className={`text-2xl md:text-4xl lg:text-5xl ${textClasses} font-sans tracking-tight mb-3 md:mb-5 select-none truncate max-w-full block`} title={metric.value}>
                   {metric.value}
                 </div>
                 <div className="flex items-center gap-1.5 text-xs md:text-sm font-bold text-[#0f172a]/70 dark:text-slate-400">
@@ -349,7 +349,7 @@ export default function DashboardPage() {
         <h2 className={`text-sm font-bold text-gray-400 mb-4 ml-1 ${language === 'ta' ? 'tracking-normal leading-relaxed' : 'tracking-widest uppercase'}`}>{t('recent_activity')}</h2>
         
         {/* The Height Constraint Matrix */}
-        <div className="w-full max-h-[380px] overflow-y-auto pr-1 space-y-3 scrollbar-thin scrollbar-thumb-slate-200/60 dark:scrollbar-thumb-white/[0.05]">
+        <div className="w-full max-h-[380px] overflow-x-hidden overflow-y-auto pr-1 space-y-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {dashboardFinalFeed.length === 0 ? (
             <div className="text-center text-gray-500 py-10 text-sm glass-card h-full flex items-center justify-center">No recent activity.</div>
           ) : (
@@ -370,10 +370,7 @@ export default function DashboardPage() {
                     <div className="text-xs text-[#0f172a]/70 dark:text-slate-400 font-semibold mt-1">{dateStr}</div>
                   </div>
 
-                  {/* Center: Subtle Badge */}
-                  <div className={`hidden sm:flex shrink-0 px-3 py-1 rounded-lg bg-slate-100/80 dark:bg-white/[0.03] text-[#0f172a]/70 dark:text-slate-400 text-[11px] font-bold mr-4 ${language === 'ta' ? 'tracking-normal leading-relaxed' : 'tracking-widest uppercase'}`}>
-                    [{tc(tx.category)}]
-                  </div>
+                  {/* Category badge removed per request */}
 
                   {/* Right Side: Luminous Amount */}
                   <div className={`text-xl md:text-2xl font-extrabold font-sans flex-shrink-0 tracking-tight ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>

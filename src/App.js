@@ -83,27 +83,39 @@ const AppShell = () => {
   };
 
   return (
-    <div className="pb-24 max-w-2xl mx-auto w-full px-4 pt-4 min-h-screen flex flex-col relative">
-      <Toast />
-      {(isSyncing || isAuthLoading) && (
-        <div className="fixed top-4 right-4 z-[999] bg-darkBg/90 backdrop-blur-md text-neonEmerald px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 border border-neonEmerald/30 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-          <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
-            <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
-          </svg>
-          {isAuthLoading ? 'Authenticating...' : 'Syncing...'}
-        </div>
-      )}
-      {renderPage()}
-      <NavMenu currentPage={currentPage} setCurrentPage={setCurrentPage} />
+    <div className="flex-1 flex flex-col h-full w-full relative">
+      
+      {/* --- 1. ISOLATED SCROLLABLE BODY FOR PAGES --- */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <Toast />
+        {(isSyncing || isAuthLoading) && (
+          <div className="fixed top-4 right-4 z-[999] bg-darkBg/90 backdrop-blur-md text-neonEmerald px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 border border-neonEmerald/30 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+            <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
+              <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+            </svg>
+            {isAuthLoading ? 'Authenticating...' : 'Syncing...'}
+          </div>
+        )}
+        {renderPage()}
+      </div>
+
+      {/* --- 2. FIXED NAVIGATION BAR (Pinned tightly to the bottom) --- */}
+      <div className="w-full">
+        <NavMenu currentPage={currentPage} setCurrentPage={setCurrentPage} />
+      </div>
     </div>
   );
 };
 
 export default function App() {
   return (
-    <ExpenseProvider>
-      <AppShell />
-    </ExpenseProvider>
+    <div className="min-h-screen bg-[#1e293b] flex items-center justify-center overflow-hidden">
+      <div className="w-full h-[100dvh] sm:w-[412px] sm:min-w-[412px] sm:h-[100vh] bg-darkBg relative flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.7)] overflow-hidden transform translate-x-0 rounded-none border-x-0 sm:border-x-[6px] sm:border-[#0f172a]">
+        <ExpenseProvider>
+          <AppShell />
+        </ExpenseProvider>
+      </div>
+    </div>
   );
 }

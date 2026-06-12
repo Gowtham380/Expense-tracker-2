@@ -1,6 +1,6 @@
 import React from 'react';
 import { supabase } from '../supabaseClient';
-import { Store, ShieldCheck } from 'lucide-react';
+import { Wallet, ShieldCheck } from 'lucide-react'; // Store-க்கு பதிலா Wallet ஐகான்
 
 export default function LoginPage() {
   const handleGoogleLogin = async () => {
@@ -19,21 +19,31 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-darkBg text-white flex flex-col items-center justify-center p-6 animate-in fade-in">
-      <div className="w-full max-w-md space-y-8 glass-card p-10 flex flex-col items-center">
+      <div className="w-full max-w-md space-y-8 glass-card p-10 flex flex-col items-center relative overflow-hidden">
         
-        <div className="bg-neonEmerald/20 p-5 rounded-full shadow-[0_0_30px_rgba(16,185,129,0.3)]">
-          <Store className="w-16 h-16 text-neonEmerald" />
+        {/* Background Glow Effect */}
+        <div className="absolute -top-10 -right-10 w-32 h-32 bg-neonEmerald/10 blur-3xl rounded-full"></div>
+
+        {/* Brand Icon */}
+        <div className="relative z-10 bg-neonEmerald/10 p-5 rounded-full shadow-[0_0_40px_rgba(16,185,129,0.2)] border border-neonEmerald/20">
+          <Wallet className="w-14 h-14 text-neonEmerald" />
         </div>
         
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-black tracking-tighter">Chips Shop<span className="text-neonEmerald">Manager</span></h1>
-          <p className="text-gray-400 font-medium">Secure Cloud Sync Edition</p>
+        {/* Professional Typography */}
+        <div className="text-center space-y-2 relative z-10">
+          <h1 className="text-4xl font-black tracking-tighter">
+            EXPENZA <span className="text-neonEmerald">PRO</span>
+          </h1>
+          <p className="text-gray-400 font-bold text-xs tracking-[0.2em] uppercase">
+            Advanced Financial Engine
+          </p>
         </div>
 
-        <div className="w-full pt-6">
+        {/* Action Button */}
+        <div className="w-full pt-6 relative z-10">
            <button 
              onClick={handleGoogleLogin}
-             className="w-full bg-white text-gray-900 border border-transparent rounded-2xl py-4 px-6 flex items-center justify-center gap-3 font-extrabold text-lg hover:bg-gray-100 active:scale-95 transition-all shadow-[0_4px_20px_rgba(255,255,255,0.1)]"
+             className="w-full bg-white text-gray-900 border border-transparent rounded-xl py-4 px-6 flex items-center justify-center gap-3 font-extrabold text-lg hover:bg-gray-100 hover:scale-[1.02] active:scale-95 transition-all shadow-[0_10px_30px_rgba(255,255,255,0.1)]"
            >
              <svg className="w-6 h-6" viewBox="0 0 24 24">
                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -41,12 +51,13 @@ export default function LoginPage() {
                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
              </svg>
-             Sign in with Google
+             Continue with Google
            </button>
         </div>
         
-        <div className="flex items-center gap-2 text-sm text-gray-500 mt-6 pt-6 border-t border-white/10 w-full justify-center">
-           <ShieldCheck className="w-4 h-4" /> End-to-End Encrypted via Supabase
+        {/* Security Badge */}
+        <div className="flex items-center gap-1.5 text-[11px] font-bold tracking-widest text-gray-500 mt-6 pt-6 border-t border-white/5 w-full justify-center uppercase relative z-10">
+           <ShieldCheck className="w-4 h-4 text-neonEmerald" /> 256-Bit Cloud Encryption
         </div>
 
       </div>
