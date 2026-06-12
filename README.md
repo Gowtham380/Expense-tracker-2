@@ -18,6 +18,7 @@
 ## ✨ Core Engine Capabilities
 
 - **🧠 Dynamic Trend Intelligence:** Advanced mathematical engines continuously calculate daily and monthly financial trajectories. Features color-coded psychology indicators (🟢 Emerald for positive trends, 🔴 Rose for negative alerts).
+- **📄 Automated PDF Reporting:** Instantly generate and export comprehensive transaction histories and financial summaries into professionally formatted PDF documents for offline auditing and sharing.
 - **⚡ Zero-Failure Data Pipeline:** Robust PostgreSQL schema alignment guarantees flawless data hydration. Strict schema validation ensures a 0-error console environment during runtime.
 - **🛡️ Bulletproof Cloud Security:** 100% serverless data persistence powered by Supabase. Implements strict Row Level Security (RLS) policies to guarantee absolute tenant data isolation.
 - **🌗 Adaptive UI/UX Matrix:** Perfectly balanced Light/Dark mode matrices with high-contrast tactile interaction nodes. Seamless overflow scrolling for massive transaction logs.
@@ -32,6 +33,7 @@
 | :--- | :--- |
 | **Frontend Framework** | React.js, Custom Hooks (Context API) |
 | **Styling & UI Elements** | Tailwind CSS, Lucide React (SVG Icons) |
+| **Document Generation** | React-to-PDF / JSPDF |
 | **Backend & Database** | Supabase (PostgreSQL), RESTful PostgREST APIs |
 | **Authentication** | Supabase Auth (Session Management) |
 | **Deployment Pipeline** | Vercel (CI/CD optimized) |
