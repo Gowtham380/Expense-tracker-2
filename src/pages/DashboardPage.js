@@ -20,7 +20,7 @@ function TickerMetrics({ todayIncome, todayExpenses, netProfit, incomeGrowth, ex
       borderTopClass: 'border-t-[#00d40e]',
       bgGlowClass: 'bg-[#38240D]/5 group-hover:bg-[#38240D]/10',
       icon: (
-        <span className="text-[#38240D]/80 flex items-center">
+        <span className={`flex items-center font-bold ${incomeGrowth >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
           {incomeGrowth >= 0 ? <TrendingUp className="w-4 h-4 mr-1" /> : <TrendingDown className="w-4 h-4 mr-1" />}
           {Math.abs(incomeGrowth)}%
         </span>
@@ -33,7 +33,7 @@ function TickerMetrics({ todayIncome, todayExpenses, netProfit, incomeGrowth, ex
       borderTopClass: 'border-t-[#fc0307]',
       bgGlowClass: 'bg-[#38240D]/5 group-hover:bg-[#38240D]/10',
       icon: (
-        <span className="text-[#38240D]/80 flex items-center">
+        <span className={`flex items-center font-bold ${expenseGrowth <= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
           {expenseGrowth <= 0 ? <TrendingDown className="w-4 h-4 mr-1" /> : <TrendingUp className="w-4 h-4 mr-1" />}
           {Math.abs(expenseGrowth)}%
         </span>
@@ -173,28 +173,41 @@ export default function DashboardPage() {
   });
 
   // ── Metrics Calculation ───────────────────────────────────────
-  const todayTransactions = transactions.filter(tx =>
-    new Date(tx.date).toDateString() === today.toDateString()
-  );
-  const todayIncome = todayTransactions
-    .filter(tx => tx.type === 'income')
-    .reduce((acc, curr) => acc + curr.amount, 0);
-  const todayExpenses = todayTransactions
-    .filter(tx => tx.type === 'expense')
-    .reduce((acc, curr) => acc + curr.amount, 0);
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const yesterdayStart = new Date(todayStart);
+  yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+
+  const incomeTxs = transactions.filter(t => t.type === 'income');
+  const expenseTxs = transactions.filter(t => t.type === 'expense');
+
+  // Helper to sum by date
+  const sumByDate = (dataArray, startDate, endDate) => {
+    return dataArray
+      .filter(item => {
+        const d = new Date(item.date);
+        return d >= startDate && (!endDate || d < endDate);
+      })
+      .reduce((sum, item) => sum + Number(item.amount), 0);
+  };
+
+  const todayIncome = sumByDate(incomeTxs, todayStart);
+  const yesterdayIncome = sumByDate(incomeTxs, yesterdayStart, todayStart);
+
+  const todayExpenses = sumByDate(expenseTxs, todayStart);
+  const yesterdayExpensesAmt = sumByDate(expenseTxs, yesterdayStart, todayStart);
+
   const netProfit = todayIncome - todayExpenses;
 
-  // Yesterday comparison
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const yesterdayTransactions = transactions.filter(tx =>
-    new Date(tx.date).toDateString() === yesterday.toDateString()
-  );
-  const yesterdayIncome = yesterdayTransactions.filter(tx => tx.type === 'income').reduce((acc, curr) => acc + curr.amount, 0);
-  const yesterdayExpensesAmt = yesterdayTransactions.filter(tx => tx.type === 'expense').reduce((acc, curr) => acc + curr.amount, 0);
-  
-  const incomeGrowth = yesterdayIncome === 0 ? (todayIncome > 0 ? 100 : 0) : Math.round(((todayIncome - yesterdayIncome) / yesterdayIncome) * 100);
-  const expenseGrowth = yesterdayExpensesAmt === 0 ? (todayExpenses > 0 ? 100 : 0) : Math.round(((todayExpenses - yesterdayExpensesAmt) / yesterdayExpensesAmt) * 100);
+  // Safe percentage calculation engine
+  const calculateTrend = (today, yesterday) => {
+    if (yesterday === 0) return today > 0 ? 100 : 0;
+    return Math.round(((today - yesterday) / yesterday) * 100);
+  };
+
+  const incomeGrowth = calculateTrend(todayIncome, yesterdayIncome);
+  const expenseGrowth = calculateTrend(todayExpenses, yesterdayExpensesAmt);
 
   // ── Handlers ────────────────────────────────────────────────────
   const handleMarkPaid = (bill) => {
@@ -214,21 +227,22 @@ export default function DashboardPage() {
   const dashboardFinalFeed = (() => {
     const sortedData = transactions || [];
     
-    // Hardcoded System anchor for precision checking
-    const todayAnchor = new Date("2026-06-11T23:59:59"); 
-    
-    // Calculate the absolute midnight timestamp baseline for Yesterday (June 10, 2026)
-    const twoDaysAgoMidnight = new Date("2026-06-10T00:00:00").getTime();
+    // Calculate midnight of yesterday
+    const startOfYesterday = new Date();
+    startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+    startOfYesterday.setHours(0, 0, 0, 0);
 
-    return sortedData.filter(item => {
+    // Filter transactions to keep only Today and Yesterday
+    const recentOnly = sortedData.filter(item => {
       if (!item.date) return false;
-      
-      // Parse entry date safely into an absolute millisecond stamp
-      const itemTimestamp = new Date(item.date).getTime();
-      
-      // Strict conditional rule: Keep entry if it falls inside the Today and Yesterday timeline bounds
-      return itemTimestamp >= twoDaysAgoMidnight && itemTimestamp <= todayAnchor.getTime();
+      const txDate = new Date(item.date);
+      return txDate >= startOfYesterday;
     });
+
+    // Sort descending by date and limit the count to top 5
+    return recentOnly
+      .sort((a, b) => new Date(b.created_at || `${b.date}T00:00:00`).getTime() - new Date(a.created_at || `${a.date}T00:00:00`).getTime())
+      .slice();
   })();
 
   return (

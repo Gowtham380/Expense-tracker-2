@@ -96,14 +96,12 @@ export default function AnalyticsPage() {
   const expensePct = pct(thisExpense, lastExpense);
 
   // ── Chart data (Filtered) ──────────────────────────────────────────
-  const targetExpenses = customCategories || CATEGORIES.KADAI;
-
   const totalIncome  = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const totalExpense = filtered.filter(t => t.type === 'expense' && targetExpenses.includes(t.category)).reduce((s, t) => s + t.amount, 0);
+  const totalExpense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
   const profitLoss   = totalIncome - totalExpense;
 
   const expByCategory = filtered
-    .filter(t => t.type === 'expense' && targetExpenses.includes(t.category))
+    .filter(t => t.type === 'expense')
     .reduce((acc, t) => { acc[tc(t.category)] = (acc[tc(t.category)] || 0) + t.amount; return acc; }, {});
   const pieData = Object.entries(expByCategory).map(([name, value]) => ({ name, value }));
 
@@ -219,7 +217,7 @@ export default function AnalyticsPage() {
                 <span className="text-xs font-medium text-[#0f172a]/70 dark:text-slate-400">{isTA ? 'வருமானம்' : 'Income'}</span>
               </div>
               <div className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">{formatINR(thisIncome)}</div>
-              <div className={`flex items-center gap-1 text-xs mt-1 font-semibold ${incomePct >= 0 ? 'text-[#0f172a] dark:text-slate-100' : 'text-[#0f172a]/60 dark:text-slate-400'}`}>
+              <div className={`flex items-center gap-1 text-xs mt-1 font-bold ${incomePct >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                 {incomePct >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                 {Math.abs(incomePct)}% vs {isTA ? 'கடந்த மாதம்' : 'last month'}
               </div>
@@ -230,7 +228,7 @@ export default function AnalyticsPage() {
                 <span className="text-xs font-medium text-[#0f172a]/70 dark:text-slate-400">{isTA ? 'செலவு' : 'Expense'}</span>
               </div>
               <div className="text-xl font-extrabold text-rose-600 dark:text-rose-400">{formatINR(thisExpense)}</div>
-              <div className={`flex items-center gap-1 text-xs mt-1 font-semibold ${expensePct <= 0 ? 'text-[#0f172a] dark:text-slate-100' : 'text-[#0f172a]/60 dark:text-slate-400'}`}>
+              <div className={`flex items-center gap-1 text-xs mt-1 font-bold ${expensePct <= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                 {expensePct <= 0 ? <ArrowDownRight className="w-3 h-3" /> : <ArrowUpRight className="w-3 h-3" />}
                 {Math.abs(expensePct)}% vs {isTA ? 'கடந்த மாதம்' : 'last month'}
               </div>

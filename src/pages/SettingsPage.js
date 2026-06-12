@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useExpense } from '../context/ExpenseContext';
-import { LogOut, KeyRound, Lock, Unlock, Plus, X, Store, Tags, ShieldCheck } from 'lucide-react';
+import { LogOut, KeyRound, Lock, Unlock, Plus, X, Store, Tags, ShieldCheck, Star } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import AmountInput from '../components/AmountInput';
 import { showToast } from '../utils/toast';
@@ -391,6 +391,42 @@ export default function SettingsPage() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+
+        {/* ── CAPSULE 5: DEVELOPER PORTFOLIO & REPO ──────────────────────── */}
+        <h2 className="text-[11px] font-bold tracking-widest text-slate-400 dark:text-slate-500 uppercase mb-2 mt-8 block px-1 flex items-center gap-1.5">
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
+            <path d="M9 18c-4.51 2-5-2-7-2" />
+          </svg>
+          {language === 'ta' ? 'டெவலப்பர் & சோர்ஸ் கோட்' : 'Developer & Source Code'}
+        </h2>
+        <div className="bg-gradient-to-r from-slate-900 to-[#0f172a] dark:from-white/[0.05] dark:to-white/[0.02] border border-slate-800 dark:border-white/[0.05] rounded-2xl p-4 shadow-lg overflow-hidden relative group">
+          {/* Decorative background glow */}
+          <div className="absolute -right-6 -top-6 w-24 h-24 bg-emerald-500/20 blur-2xl rounded-full group-hover:bg-emerald-500/30 transition-all duration-500"></div>
+
+          <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-white text-sm font-black flex items-center gap-2">
+                Expenza v3.0 Pro 🚀
+              </h3>
+              <p className="text-slate-400 text-xs font-medium mt-1 leading-relaxed max-w-[250px]">
+                {language === 'ta' 
+                  ? 'இந்த ப்ராஜெக்ட் உங்களுக்கு பிடித்திருந்தால், GitHub-ல் ஒரு ஸ்டார் (⭐) கொடுக்கவும்!' 
+                  : 'If you like this project architecture, consider giving it a star on GitHub!'}
+              </p>
+            </div>
+
+            <a 
+              href="https://github.com/Gowtham380/Expense-tracker-2" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-white text-[#0f172a] hover:bg-slate-100 hover:scale-105 transition-all active:scale-95 px-4 py-2.5 rounded-xl font-bold text-xs shadow-[0_0_20px_rgba(255,255,255,0.1)] whitespace-nowrap"
+            >
+              <Star className="w-4 h-4 fill-[#0f172a]" /> 
+              Star on GitHub
+            </a>
           </div>
         </div>
 
