@@ -68,7 +68,7 @@ export default function FinancialHealth() {
   const healthLabel = isTA ? 'நிதி நிலைமை' : 'Financial Status';
 
   return (
-    <div className="bg-white dark:bg-[#1e293b]/10 border border-slate-200/80 dark:border-white/[0.05] shadow-[0_8px_30px_rgba(15,23,42,0.015)] rounded-2xl p-5 w-full mb-6 relative overflow-hidden flex flex-col">
+    <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-black dark:border-black shadow-[0_8px_30px_rgba(15,23,42,0.015)] rounded-2xl p-5 w-full mb-6 relative overflow-hidden flex flex-col transition-colors duration-300">
       <div className="absolute top-0 right-0 w-32 h-32 bg-neonEmerald/10 rounded-full blur-3xl -mr-16 -mt-16" />
       
       {/* Alerts */}
@@ -100,27 +100,27 @@ export default function FinancialHealth() {
             </div>
           ) : (
             <div className="flex items-center gap-4 cursor-pointer" onClick={() => { setTempTarget(savingsTarget || 0); setIsEditingTarget(true); }}>
-              <div className="text-sm text-gray-400">{targetLabel}</div>
+              <div className="text-sm text-slate-400">{targetLabel}</div>
               <div className="font-extrabold text-lg text-emerald-600 dark:text-emerald-400">{formatINR(savingsTarget || 0)}</div>
             </div>
           )}
         </div>
 
         <div className="grid grid-cols-2 sm:flex sm:flex-col gap-4 sm:gap-3 mt-4 mb-6">
-          <div className="col-span-1 flex flex-col justify-center sm:items-start bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-white/[0.04] p-3 rounded-xl min-w-0">
-            <div className="text-gray-400 text-sm mb-1 flex items-center gap-2">
+          <div className="col-span-1 flex flex-col justify-center sm:items-start bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-black dark:border-black p-3 rounded-xl min-w-0">
+            <div className="text-slate-400 text-sm mb-1 flex items-center gap-2">
               <TrendingUp className="text-emerald-600 dark:text-emerald-400 w-4 h-4" /> {isTA ? 'வருமானம்' : 'Income'}
             </div>
             <div className="text-xl sm:text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 truncate max-w-full block" title={formatINR(totalIncome)}>{formatINR(totalIncome)}</div>
           </div>
-          <div className="col-span-1 flex flex-col justify-center sm:items-start bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-white/[0.04] p-3 rounded-xl min-w-0">
-            <div className="text-gray-400 text-sm mb-1 flex items-center gap-2">
+          <div className="col-span-1 flex flex-col justify-center sm:items-start bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-black dark:border-black p-3 rounded-xl min-w-0">
+            <div className="text-slate-400 text-sm mb-1 flex items-center gap-2">
               <TrendingDown className="text-rose-600 dark:text-rose-400 w-4 h-4" /> {isTA ? 'செலவு' : 'Expenses'}
             </div>
             <div className="text-xl sm:text-2xl font-extrabold text-rose-600 dark:text-rose-400 truncate max-w-full block" title={formatINR(totalExpenses)}>{formatINR(totalExpenses)}</div>
           </div>
-          <div className="col-span-2 flex flex-row sm:flex-col justify-between sm:justify-center items-center sm:items-start bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-white/[0.04] p-3 rounded-xl mt-2 sm:mt-0 min-w-0">
-            <div className="text-gray-400 text-sm whitespace-nowrap sm:mb-1">{isTA ? 'எதிர்பார்க்கும் இருப்பு' : 'Predicted Balance'}</div>
+          <div className="col-span-2 flex flex-row sm:flex-col justify-between sm:justify-center items-center sm:items-start bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-black dark:border-black p-3 rounded-xl mt-2 sm:mt-0 min-w-0">
+            <div className="text-slate-400 text-sm whitespace-nowrap sm:mb-1">{isTA ? 'எதிர்பார்க்கும் இருப்பு' : 'Predicted Balance'}</div>
             <div className={`text-xl sm:text-2xl font-extrabold truncate max-w-full block sm:pl-0 pl-4 ${predictedEndBalance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`} title={formatINR(predictedEndBalance)}>
               {formatINR(predictedEndBalance)}
             </div>
@@ -130,12 +130,12 @@ export default function FinancialHealth() {
         {savingsTarget > 0 && (
           <div className="mt-4">
             <div className="flex justify-between text-sm mb-2">
-              <span className="text-gray-400">{isTA ? 'தற்போதைய சேமிப்பு' : 'Actual Savings'}</span>
+              <span className="text-slate-400">{isTA ? 'தற்போதைய சேமிப்பு' : 'Actual Savings'}</span>
               <span className={progressPct >= 100 ? 'text-neonEmerald' : 'text-amber-400'}>
                 {Math.max(0, progressPct).toFixed(1)}% {isTA ? 'அடையப்பட்டது' : 'Reached'}
               </span>
             </div>
-            <div className="w-full h-3 bg-slate-100 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/[0.04] rounded-full overflow-hidden relative">
+            <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-black dark:border-black rounded-full overflow-hidden relative">
               <div 
                 className={`h-full transition-all duration-1000 ${
                   progressPct >= 100 ? 'bg-neonEmerald' : progressPct > 50 ? 'bg-emerald-400' : 'bg-amber-400'

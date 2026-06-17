@@ -5,18 +5,108 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800;900&display=swap');
 
 @layer base {
+  :root {
+    --bg-primary: #f8fafc; /* Beautiful clean slate off-white */
+    --card-bg: #ffffff;    /* Pure white card */
+    --border-color: rgba(15, 23, 42, 0.08); /* Clean hairline borders */
+    /* CENTRALIZED OPACITY CONTROL */
+    --glass-opacity-light: 0.55;
+    --glass-opacity-dark: 0.15;
+    --glass-blur: 20px;
+  }
+  .dark {
+    --bg-primary: #000000; /* Strict Pitch Black */
+    --card-bg: #0b0f19;   /* Deep charcoal-black card bg */
+    --border-color: rgba(255, 255, 255, 0.08); /* Subtle dark border */
+    @apply bg-black text-white;
+  }
+
+  /* Global hairline border adapter */
+  *, *::before, *::after {
+    border-color: var(--border-color);
+  }
+
+  /* Explicitly target and override card borders */
+  .border, .border-t, .border-b, .border-l, .border-r {
+    border-color: var(--border-color) !important;
+  }
+
+  /* Remove white backgrounds from cards specifically inside dark mode without breaking white buttons/inputs */
+  .dark .bg-white:not(button):not(input) {
+    background-color: #0b0f19 !important;
+  }
+
   body {
-    @apply bg-[#F8FAFC] text-slate-900 dark:bg-darkBg dark:text-white antialiased selection:bg-neonEmerald selection:text-white font-sans transition-colors duration-500;
+    background-color: var(--bg-primary) !important;
+    @apply text-slate-900 dark:text-white antialiased selection:bg-neonEmerald selection:text-white font-sans transition-colors duration-500;
   }
 }
 
 @layer components {
-  .glass-card {
-    @apply bg-white/80 dark:bg-darkCard/70 backdrop-blur-[25px] border border-slate-200 dark:border-white/5 rounded-[20px] shadow-lg dark:shadow-2xl transition-all duration-300;
+
+  /* This class replaces all your card styles */
+  .premium-card {
+    background-color: var(--card-bg) !important;
+    border: 1px solid transparent !important; /* Ghost border killed */
+    box-shadow: none !important;
+  }
+
+  /* Selective Glass Utility - Apply only where needed */
+  .glass-premium {
+    background: rgba(255, 255, 255, var(--glass-opacity-light)) !important;
+    backdrop-filter: blur(var(--glass-blur)) !important;
+    -webkit-backdrop-filter: blur(var(--glass-blur)) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.1) !important;
+    position: relative;
+  }
+  
+  .glass-premium::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+    z-index: 10;
+    pointer-events: none;
+  }
+  
+  .glass-premium::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 100%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), transparent, rgba(255, 255, 255, 0.3));
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .dark .glass-premium {
+    background: rgba(0, 0, 0, var(--glass-opacity-dark)) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.05) !important;
+  }
+  
+  .dark .glass-premium::before {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  }
+  
+  .dark .glass-premium::after {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.3), transparent, rgba(255, 255, 255, 0.05));
   }
   
   .glass-input {
-    @apply w-full bg-slate-100 dark:bg-darkBg/50 border border-slate-200 dark:border-white/20 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-400 focus:outline-none focus:border-neonEmerald focus:ring-1 focus:ring-neonEmerald transition-all;
+    @apply w-full bg-slate-100 dark:bg-darkBg/50 border border-slate-200 dark:border-white/20 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-neonEmerald focus:ring-1 focus:ring-neonEmerald transition-all;
   }
   
   .btn-neon {

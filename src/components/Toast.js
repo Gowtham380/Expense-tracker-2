@@ -50,23 +50,24 @@ export default function Toast() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-2 w-[90vw] max-w-sm pointer-events-none">
+    <div className="fixed top-4 left-0 right-0 z-[100] px-4 pointer-events-none flex flex-col items-center gap-2">
       {toasts.map((t) => (
         <div
           key={t.id}
-          className={`flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-md shadow-2xl
-            text-sm font-semibold pointer-events-auto
-            animate-in slide-in-from-top-2 fade-in duration-200
-            ${STYLES[t.type] ?? STYLES.info}`}
+          className={`pointer-events-auto animate-in slide-in-from-top-4 fade-in p-4 rounded-xl shadow-lg border flex items-center gap-3 w-full max-w-sm ${
+            t.type === 'error' 
+              ? 'bg-red-50 border-red-200 text-red-700' 
+              : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+          }`}
         >
           {ICONS[t.type]}
-          <span className="flex-1 leading-tight">{t.message}</span>
+          <span className="font-medium text-sm flex-1">{t.message}</span>
           <button
             onClick={() => dismiss(t.id)}
-            className="opacity-60 hover:opacity-100 transition-opacity ml-1 text-lg leading-none"
+            className="ml-auto opacity-60 hover:opacity-100"
             aria-label="Dismiss"
           >
-            ×
+            ✕
           </button>
         </div>
       ))}

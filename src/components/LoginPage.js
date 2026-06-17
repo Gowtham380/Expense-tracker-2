@@ -19,7 +19,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-darkBg text-white flex flex-col items-center justify-center p-6 animate-in fade-in">
-      <div className="w-full max-w-md space-y-8 glass-card p-10 flex flex-col items-center relative overflow-hidden">
+      <div className="w-full max-w-md space-y-8 glass-premium rounded-3xl p-10 flex flex-col items-center relative overflow-hidden">
         
         {/* Background Glow Effect */}
         <div className="absolute -top-10 -right-10 w-32 h-32 bg-neonEmerald/10 blur-3xl rounded-full"></div>
@@ -34,7 +34,7 @@ export default function LoginPage() {
           <h1 className="text-4xl font-black tracking-tighter">
             EXPENZA <span className="text-neonEmerald">PRO</span>
           </h1>
-          <p className="text-gray-400 font-bold text-xs tracking-[0.2em] uppercase">
+          <p className="text-slate-400 font-bold text-xs tracking-[0.2em] uppercase">
             Advanced Financial Engine
           </p>
         </div>
@@ -43,7 +43,8 @@ export default function LoginPage() {
         <div className="w-full pt-6 relative z-10">
            <button 
              onClick={handleGoogleLogin}
-             className="w-full bg-white text-gray-900 border border-transparent rounded-xl py-4 px-6 flex items-center justify-center gap-3 font-extrabold text-lg hover:bg-gray-100 hover:scale-[1.02] active:scale-95 transition-all shadow-[0_10px_30px_rgba(255,255,255,0.1)]"
+             style={{ backgroundColor: '#ffffff', color: '#0f172a' }}
+             className="w-full border border-transparent rounded-xl py-4 px-6 flex items-center justify-center gap-3 font-extrabold text-lg hover:bg-slate-100 hover:scale-[1.02] active:scale-95 transition-all shadow-[0_10px_30px_rgba(255,255,255,0.1)]"
            >
              <svg className="w-6 h-6" viewBox="0 0 24 24">
                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -56,7 +57,7 @@ export default function LoginPage() {
         </div>
         
         {/* Security Badge */}
-        <div className="flex items-center gap-1.5 text-[11px] font-bold tracking-widest text-gray-500 mt-6 pt-6 border-t border-white/5 w-full justify-center uppercase relative z-10">
+        <div className="flex items-center gap-1.5 text-[11px] font-bold tracking-widest text-slate-500 mt-6 pt-6 border-t border-white/5 w-full justify-center uppercase relative z-10">
            <ShieldCheck className="w-4 h-4 text-neonEmerald" /> 256-Bit Cloud Encryption
         </div>
 

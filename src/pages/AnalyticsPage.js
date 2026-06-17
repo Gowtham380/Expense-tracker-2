@@ -3,7 +3,7 @@ import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
   Tooltip, ResponsiveContainer, Legend, CartesianGrid
 } from 'recharts';
-import { useExpense, formatINR, CATEGORIES } from '../context/ExpenseContext';
+import { useExpense, formatINR } from '../context/ExpenseContext';
 import { BarChart3, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Search, Filter, XCircle, X } from 'lucide-react';
 import { startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths } from 'date-fns';
 
@@ -30,8 +30,9 @@ function pct(current, prev) {
 }
 
 export default function AnalyticsPage() {
-  const { transactions, customCategories, language, t, tc } = useExpense();
+  const { transactions, language, t, tc, themeMode } = useExpense();
   const isTA = language === 'ta';
+  const isDarkMode = themeMode === 'dark';
 
   const [search, setSearch]       = useState('');
   const [fromDate, setFromDate]   = useState('');
@@ -54,12 +55,12 @@ export default function AnalyticsPage() {
   }, [transactions]);
 
   // Sticky Scroll Logic
-  const [isScrolled, setIsScrolled] = useState(false);
-  useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  // const [isScrolled, setIsScrolled] = useState(false);
+  // useEffect(() => {
+  //   const handleScroll = () => setIsScrolled(window.scrollY > 20);
+  //   window.addEventListener('scroll', handleScroll, { passive: true });
+  //   return () => window.removeEventListener('scroll', handleScroll);
+  // }, []);
 
   // Sync preset to custom dates when clicked
   const handlePresetClick = (pid) => {
@@ -133,7 +134,7 @@ export default function AnalyticsPage() {
     if (!active || !payload?.length) return null;
     return (
       <div className="bg-darkCard/95 border border-white/10 rounded-xl p-3 text-xs shadow-xl">
-        <p className="font-bold text-gray-200 mb-1">{label}</p>
+        <p className="font-bold text-slate-200 mb-1">{label}</p>
         {payload.map(p => (
           <p key={p.name} style={{ color: p.color }}>{p.name}: {formatINR(p.value)}</p>
         ))}
@@ -142,37 +143,39 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <div className="w-full h-full flex flex-col relative animate-in fade-in pb-20 overflow-x-hidden">
+    <div className="w-full relative animate-in fade-in pb-20 bg-slate-50 dark:bg-black">
 
       {/* ── Sticky Filter Header ──────────────────────────────────────── */}
-      <div className="sticky top-0 z-50 w-full bg-darkBg border-b border-slate-800/50 px-4 py-3 shadow-md">
-        <div className="flex gap-2 items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder={t('search')} 
-              value={search} 
-              onChange={e => setSearch(e.target.value)} 
-              className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-            />
-            {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>}
+      <div className="sticky top-0 z-[50] w-full pt-2 px-2 md:max-w-4xl lg:max-w-5xl md:mx-auto">
+        <div className="relative overflow-hidden glass-premium rounded-2xl p-3 shadow-2xl transition-all duration-300">
+          <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 to-rose-500/20 blur-xl opacity-50"></div>
+          <div className="flex gap-2 items-center relative z-10">
+            <div className="relative flex-1 glass-premium rounded-xl shadow-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input 
+                type="text" 
+                placeholder={t('search')} 
+                value={search} 
+                onChange={e => setSearch(e.target.value)} 
+                className="w-full bg-transparent pl-9 pr-8 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl"
+              />
+              {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 dark:hover:text-white"><X className="w-4 h-4" /></button>}
+            </div>
+            <button 
+              onClick={() => setShowFilters(!showFilters)} 
+              className={`p-2.5 rounded-xl glass-premium transition-colors shadow-sm ${showFilters ? 'text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500' : 'text-slate-500 dark:text-slate-400'}`}
+            >
+              <Filter className="w-5 h-5" />
+            </button>
           </div>
-          <button 
-            onClick={() => setShowFilters(!showFilters)} 
-            className={`p-2.5 rounded-xl border transition-colors ${showFilters ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : 'bg-slate-800/50 border-slate-700/50 text-slate-400'}`}
-          >
-            <Filter className="w-5 h-5" />
-          </button>
-        </div>
 
-        {/* --- COLLAPSIBLE DRAWER --- */}
-        {showFilters && (
+          {/* --- COLLAPSIBLE DRAWER --- */}
+          {showFilters && (
           <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 pb-2">
             <div className="flex items-center justify-between">
-              <h1 className="font-bold text-white text-sm flex items-center gap-2"><BarChart3 className="w-4 h-4 text-emerald-500" /> {t('analytics')}</h1>
+              <h1 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2"><BarChart3 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> {t('analytics')}</h1>
               {hasActiveFilters && (
-                <button onClick={clearFilters} className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 transition-all">
+                <button onClick={clearFilters} className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 transition-all shadow-sm">
                   <XCircle className="w-3.5 h-3.5" /> Clear
                 </button>
               )}
@@ -180,24 +183,24 @@ export default function AnalyticsPage() {
 
             {/* Date row */}
             <div className="flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] w-full items-center">
-              <div className="flex items-center gap-2 flex-1 bg-slate-800/50 border border-slate-700/50 rounded-xl px-3 py-2 text-xs font-bold">
-                <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setPreset(''); }} className="bg-transparent text-white focus:outline-none w-full cursor-pointer [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert" title="From" />
+              <div className="flex items-center gap-2 flex-1 bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-white shadow-sm">
+                <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setPreset(''); }} className="bg-transparent text-slate-900 dark:text-white focus:outline-none w-full cursor-pointer" title="From" />
               </div>
-              <div className="flex items-center gap-2 flex-1 bg-slate-800/50 border border-slate-700/50 rounded-xl px-3 py-2 text-xs font-bold">
-                <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setPreset(''); }} className="bg-transparent text-white focus:outline-none w-full cursor-pointer [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert" title="To" />
+              <div className="flex items-center gap-2 flex-1 bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-white shadow-sm">
+                <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setPreset(''); }} className="bg-transparent text-slate-900 dark:text-white focus:outline-none w-full cursor-pointer" title="To" />
               </div>
             </div>
 
             {/* Type Filter */}
-            <div className="flex bg-slate-800/50 border border-slate-700/50 rounded-xl p-1 gap-1">
-              {[{ val: 'all', label: isTA ? 'அனைத்தும்' : 'All' }, { val: 'income', label: <TrendingUp className="w-4 h-4 text-emerald-400" /> }, { val: 'expense', label: <TrendingDown className="w-4 h-4 text-rose-400" /> }].map(({ val, label }) => (
+            <div className="flex bg-white dark:bg-[#1e293b] shadow-sm border border-slate-200 dark:border-slate-800 rounded-xl p-1 gap-1">
+              {[{ val: 'all', label: isTA ? 'அனைத்தும்' : 'All' }, { val: 'income', label: <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> }, { val: 'expense', label: <TrendingDown className="w-4 h-4 text-rose-600 dark:text-rose-400" /> }].map(({ val, label }) => (
                 <button key={val} onClick={() => setTypeFilter(val)}
-                  className={`flex-1 flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex-shrink-0 ${
+                  className={`flex-1 flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex-shrink-0 ${
                     typeFilter === val 
-                      ? val === 'income' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50' 
-                      : val === 'expense' ? 'bg-rose-500/20 text-rose-400 border-rose-500/50'
-                      : 'bg-slate-500/20 text-white border-slate-500/50'
-                      : 'text-slate-400 border-transparent hover:text-white'
+                      ? val === 'income' ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 shadow-sm border border-emerald-200 dark:border-emerald-500/40' 
+                      : val === 'expense' ? 'bg-rose-50 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 shadow-sm border border-rose-200 dark:border-rose-500/40'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm border border-slate-300 dark:border-slate-800'
+                      : 'text-slate-500 border border-transparent hover:text-slate-900 dark:hover:text-white'
                   }`}>
                   {label}
                 </button>
@@ -205,59 +208,60 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Quick Presets */}
-            <div className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] bg-slate-800/50 p-1 rounded-xl border border-slate-700/50 items-center w-full">
+            <div className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] bg-white dark:bg-[#1e293b] shadow-sm p-1 rounded-xl border border-slate-200 dark:border-slate-800 items-center w-full">
               {PRESETS.map(p => (
                 <button key={p.id} onClick={() => handlePresetClick(p.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all flex-shrink-0 border ${preset === p.id ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50' : 'text-slate-400 border-transparent hover:text-white'}`}>
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all flex-shrink-0 border ${preset === p.id ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 shadow-sm border-emerald-200 dark:border-emerald-500/40' : 'text-slate-500 border-transparent hover:text-slate-900 dark:hover:text-white'}`}>
                   {isTA ? p.label : p.labelEn}
                 </button>
               ))}
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* ── Scrollable Body Content ─────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-4 space-y-5 pt-5">
+      <div className="w-full px-4 space-y-5 pt-5">
         
         {/* ── Profit/Loss Summary (Filtered) ────────────────────────────── */}
-        <div className="bg-white dark:bg-[#1e293b]/50 border border-slate-200/80 dark:border-white/[0.05] p-6 rounded-2xl shadow-sm text-center mt-4">
-          <h3 className="text-sm font-bold text-[#0f172a]/70 dark:text-slate-400 mb-2 uppercase tracking-wide">
+        <div className="premium-card bg-white dark:bg-[#111827] p-6 rounded-2xl text-center mt-4 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none !shadow-none">
+          <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide">
             {isTA ? 'நிதி நிலைமை' : 'Financial Status'}
           </h3>
-          <div className={`text-4xl tracking-tight ${profitLoss >= 0 ? 'text-emerald-600 dark:text-emerald-400 font-extrabold' : 'text-rose-600 dark:text-rose-400 font-extrabold'}`}>
-            {formatINR(profitLoss)}
+          <div className={`text-4xl tracking-tight ${profitLoss >= 0 ? 'text-emerald-600 font-extrabold' : 'text-rose-600 font-extrabold'}`}>
+            {profitLoss > 0 ? '+' : ''}{formatINR(profitLoss)}
           </div>
           <div className="flex justify-center gap-8 mt-4 text-sm">
-            <div className="flex flex-col"><span className="text-[#0f172a]/70 dark:text-slate-400 font-medium">{isTA ? 'வருமானம்' : 'Income'}</span><span className="font-extrabold text-emerald-600 dark:text-emerald-400">{formatINR(totalIncome)}</span></div>
-            <div className="flex flex-col"><span className="text-[#0f172a]/70 dark:text-slate-400 font-medium">{isTA ? 'செலவு' : 'Expenses'}</span><span className="font-extrabold text-rose-600 dark:text-rose-400">{formatINR(totalExpense)}</span></div>
+            <div className="flex flex-col"><span className="text-slate-500 font-medium">{isTA ? 'வருமானம்' : 'Income'}</span><span className="font-extrabold text-emerald-600">{formatINR(totalIncome)}</span></div>
+            <div className="flex flex-col"><span className="text-slate-500 font-medium">{isTA ? 'செலவு' : 'Expenses'}</span><span className="font-extrabold text-rose-600">{formatINR(totalExpense)}</span></div>
           </div>
         </div>
 
         {/* ── Comparative Month View (Always Absolute values) ───────────── */}
-        <div className="bg-white dark:bg-[#1e293b]/50 border border-slate-200/80 dark:border-white/[0.05] p-6 rounded-2xl shadow-sm">
-          <h3 className="text-sm font-bold text-[#0f172a]/70 dark:text-slate-400 mb-4 uppercase tracking-wide">
+        <div className="premium-card bg-white dark:bg-[#111827] p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none !shadow-none">
+          <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-4 uppercase tracking-wide">
             {isTA ? 'இந்த மாதம் vs கடந்த மாதம்' : 'This Month vs Last Month'}
           </h3>
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-white/[0.04] rounded-2xl p-4">
+            <div className="bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-1">
-                <TrendingUp className="w-4 h-4 text-[#0f172a] dark:text-slate-100" />
-                <span className="text-xs font-medium text-[#0f172a]/70 dark:text-slate-400">{isTA ? 'வருமானம்' : 'Income'}</span>
+                <TrendingUp className="w-4 h-4 text-slate-900 dark:text-slate-300" />
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{isTA ? 'வருமானம்' : 'Income'}</span>
               </div>
               <div className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">{formatINR(thisIncome)}</div>
-              <div className={`flex items-center gap-1 text-xs mt-1 font-bold ${incomePct >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+              <div className={`flex items-center gap-1 text-xs mt-1 font-bold ${incomePct >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
                 {incomePct >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                 {Math.abs(incomePct)}% vs {isTA ? 'கடந்த மாதம்' : 'last month'}
               </div>
             </div>
-            <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-white/[0.04] rounded-2xl p-4">
+            <div className="bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-1">
-                <TrendingDown className="w-4 h-4 text-[#0f172a] dark:text-slate-100" />
-                <span className="text-xs font-medium text-[#0f172a]/70 dark:text-slate-400">{isTA ? 'செலவு' : 'Expense'}</span>
+                <TrendingDown className="w-4 h-4 text-slate-900 dark:text-slate-300" />
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{isTA ? 'செலவு' : 'Expense'}</span>
               </div>
               <div className="text-xl font-extrabold text-rose-600 dark:text-rose-400">{formatINR(thisExpense)}</div>
-              <div className={`flex items-center gap-1 text-xs mt-1 font-bold ${expensePct <= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+              <div className={`flex items-center gap-1 text-xs mt-1 font-bold ${expensePct <= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
                 {expensePct <= 0 ? <ArrowDownRight className="w-3 h-3" /> : <ArrowUpRight className="w-3 h-3" />}
                 {Math.abs(expensePct)}% vs {isTA ? 'கடந்த மாதம்' : 'last month'}
               </div>
@@ -266,55 +270,55 @@ export default function AnalyticsPage() {
         </div>
 
         {/* ── Income vs Expense Bar Chart ───────────────────────────────── */}
-        <div className="bg-white dark:bg-[#1e293b]/50 border border-slate-200/80 dark:border-white/[0.05] shadow-sm p-6 rounded-2xl">
-          <h4 className="text-sm text-[#0f172a] dark:text-slate-100 mb-5 text-center font-bold uppercase tracking-wide">
+        <div className="premium-card bg-white dark:bg-[#111827] p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none !shadow-none">
+          <h4 className="text-sm text-slate-900 dark:text-white mb-5 text-center font-bold uppercase tracking-wide">
             {isTA ? 'வருமானம் vs செலவு' : 'Income vs Expense'}
           </h4>
-          <div className="h-56">
+          <div className="w-full h-[250px] min-h-[250px] overflow-hidden">
             {barData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={barData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(15,23,42,0.05)" />
-                  <XAxis dataKey="name" stroke="#0f172a" opacity={0.6} fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#0f172a" opacity={0.6} fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => `₹${v >= 1000 ? (v/1000).toFixed(0)+'k' : v}`} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend wrapperStyle={{ fontSize: '11px', color: '#0f172a', opacity: 0.8 }} />
-                  <Bar dataKey="income" name={isTA ? 'வருமானம்' : 'Income'} fill="#059669" radius={[4,4,0,0]} animationDuration={300} />
-                  <Bar dataKey="expense" name={isTA ? 'செலவு' : 'Expense'} fill="#e11d48" radius={[4,4,0,0]} animationDuration={300} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.05)"} />
+                  <XAxis dataKey="name" stroke={isDarkMode ? "#94a3b8" : "#475569"} opacity={0.6} fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke={isDarkMode ? "#94a3b8" : "#475569"} opacity={0.6} fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => `₹${v >= 1000 ? (v/1000).toFixed(0)+'k' : v}`} />
+                  <Tooltip contentStyle={{ backgroundColor: isDarkMode ? '#1e293b' : '#ffffff', borderColor: isDarkMode ? '#334155' : '#e2e8f0', color: isDarkMode ? '#f8fafc' : '#0f172a' }} />
+                  <Legend wrapperStyle={{ fontSize: '11px', color: isDarkMode ? '#94a3b8' : '#0f172a', opacity: 0.8 }} />
+                  <Bar dataKey="income" name={isTA ? 'வருமானம்' : 'Income'} fill="#10b981" radius={[4,4,0,0]} animationDuration={300} />
+                  <Bar dataKey="expense" name={isTA ? 'செலவு' : 'Expense'} fill="#f43f5e" radius={[4,4,0,0]} animationDuration={300} />
                 </BarChart>
               </ResponsiveContainer>
-            ) : <div className="h-full flex items-center justify-center text-gray-500 text-sm">{t('noData')}</div>}
+            ) : <div className="h-full flex items-center justify-center text-slate-500 text-sm">{t('noData')}</div>}
           </div>
         </div>
 
         {/* ── Category Pie ─────────────────────────────────────────────── */}
-        <div className="bg-white dark:bg-[#1e293b]/50 border border-slate-200/80 dark:border-white/[0.05] shadow-sm p-6 rounded-2xl">
-          <h4 className="text-sm text-[#0f172a] dark:text-slate-100 mb-5 text-center font-bold uppercase tracking-wide">
+        <div className="premium-card bg-white dark:bg-[#111827] p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none !shadow-none">
+          <h4 className="text-sm text-slate-900 dark:text-white mb-5 text-center font-bold uppercase tracking-wide">
             {isTA ? 'வகைவாரி செலவு' : 'Expenses by Category'}
           </h4>
           {pieData.length > 0 ? (
             <>
-              <div className="h-56 mb-4">
+              <div className="w-full h-[250px] min-h-[250px] mb-4 overflow-hidden">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={4} dataKey="value" stroke="none" animationDuration={300}>
                       {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                     </Pie>
-                    <Tooltip content={<CustomTooltip />} />
+                    <Tooltip contentStyle={{ backgroundColor: isDarkMode ? '#1e293b' : '#ffffff', borderColor: isDarkMode ? '#334155' : '#e2e8f0', color: isDarkMode ? '#f8fafc' : '#0f172a' }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="flex flex-wrap justify-center gap-3 text-xs text-gray-400">
+              <div className="flex flex-wrap justify-center gap-3 text-xs text-slate-500">
                 {pieData.map((entry, i) => (
                   <div key={entry.name} className="flex items-center gap-1.5">
                     <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                    <span>{entry.name}</span>
-                    <span className="text-gray-500">({formatINR(entry.value)})</span>
+                    <span className="text-slate-600 font-medium">{entry.name}</span>
+                    <span className="text-slate-400">({formatINR(entry.value)})</span>
                   </div>
                 ))}
               </div>
             </>
-          ) : <div className="flex items-center justify-center py-12 text-gray-500 text-sm">{t('noData')}</div>}
+          ) : <div className="flex items-center justify-center py-12 text-slate-500 text-sm">{t('noData')}</div>}
         </div>
       </div>
     </div>

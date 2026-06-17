@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { useExpense } from '../context/ExpenseContext';
 import AmountInput from './AmountInput';
 import { showToast } from '../utils/toast';
 
 export default function Modal({ isOpen, onClose, type, initialData }) {
-  const { addSale, addExpense, customCategories, t, tc } = useExpense();
+  const { addSale, addExpense, customCategories, transactions, t, tc } = useExpense();
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false); // ← double-submit guard
+  const amountRef = useRef(null);
 
 
   const isIncome = type === 'income';
@@ -46,8 +47,12 @@ export default function Modal({ isOpen, onClose, type, initialData }) {
     if (isSubmitting) return; // ← guard: block duplicate taps
 
     // ── Amount validation ───────────────────────────────────────────────────
-    const cleanAmount = parseFloat(amount);
-    if (isNaN(cleanAmount) || cleanAmount <= 0) return; // Operational boundary lock
+    const rawValue = amountRef.current?.value || amount;
+    const cleanAmount = parseFloat(rawValue);
+    if (isNaN(cleanAmount) || cleanAmount <= 0) {
+      showToast('Amount must be greater than ₹0', 'error');
+      return; // Operational boundary lock
+    }
 
     // ── Date validation ─────────────────────────────────────────────────────
     if (!date) {
@@ -90,6 +95,7 @@ export default function Modal({ isOpen, onClose, type, initialData }) {
         await addExpense(payload);
       }
       setAmount('');
+      setCategory('');
       setNote('');
       onClose();
     } finally {
@@ -98,73 +104,94 @@ export default function Modal({ isOpen, onClose, type, initialData }) {
   };
 
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-white dark:bg-[#151f32] border border-slate-200/80 dark:border-white/[0.08] shadow-[0_20px_50px_rgba(15,23,42,0.08)] rounded-3xl p-6 relative overflow-hidden transition-all duration-300 mx-4">
-        <button 
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
-        >
-          <X className="w-6 h-6" />
-        </button>
+    const getSortedCategories = () => {
+      const filterType = isIncome ? 'income' : 'expense';
+      const activeOptions = customCategories?.filter(c => c.type === filterType) || [];
+      
+      const frequencies = {};
+      (transactions || []).forEach(tx => {
+        if (tx.type === filterType && tx.category) {
+          frequencies[tx.category] = (frequencies[tx.category] || 0) + 1;
+        }
+      });
 
-        <h2 className={`text-2xl font-bold mb-6 ${isIncome ? 'text-neonEmerald' : 'text-neonRose'}`}>
-          {isIncome ? t('add_income') : t('add_expense')}
-        </h2>
+      return [...activeOptions].sort((a, b) => {
+        const freqA = frequencies[a.name] || 0;
+        const freqB = frequencies[b.name] || 0;
+        return freqB - freqA;
+      });
+    };
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">Amount (₹)</label>
-            <AmountInput 
-              required autoFocus
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-900/60 text-[#0f172a] dark:text-white border border-slate-300 dark:border-white/[0.15] focus:border-[#0f172a] dark:focus:border-emerald-500 rounded-2xl p-4 text-2xl font-black text-center shadow-inner tracking-tight placeholder:text-slate-400 focus:ring-0 transition-colors"
-              placeholder="0.00"
-            />
-          </div>
+    const sortedCategories = getSortedCategories();
 
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">Category</label>
-            <select 
-              value={category} 
-              onChange={(e) => setCategory(e.target.value)}
-              className="glass-input [&>optgroup]:bg-darkCard [&>option]:bg-darkCard py-3 text-lg"
-              required
-            >
-              <option value="" disabled>Select Category</option>
-              {isIncome ? (
-                (customCategories?.filter(c => c.type === 'income') || []).map(c => <option key={c.name} value={c.name}>{tc(c.name)}</option>)
-              ) : (
-                <optgroup label={tc('category')}>
-                  {(customCategories?.filter(c => c.type === 'expense') || []).map(c => <option key={c.name} value={c.name}>{tc(c.name)}</option>)}
-                </optgroup>
-              )}
-            </select>
-          </div>
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="w-full max-w-md bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-black dark:border-black shadow-xl dark:shadow-2xl rounded-3xl p-6 relative overflow-hidden transition-all duration-300 mx-4">
+          <button 
+            onClick={onClose}
+            className="absolute top-4 right-4 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+
+          <h2 className={`text-2xl font-bold mb-6 ${isIncome ? 'text-emerald-600' : 'text-rose-600'}`}>
+            {isIncome ? t('add_income') : t('add_expense')}
+          </h2>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm text-slate-500 dark:text-slate-400 mb-1">Amount (₹)</label>
+              <AmountInput 
+                ref={amountRef}
+                required autoFocus
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-[#1e293b] text-slate-900 dark:text-white border border-slate-200 dark:border-black dark:border-black focus:border-emerald-500 rounded-2xl p-4 text-2xl font-black text-center shadow-sm tracking-tight placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-0 transition-colors"
+                placeholder="0.00"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-slate-500 dark:text-slate-400 mb-1">Category</label>
+              <select 
+                value={category} 
+                onChange={(e) => setCategory(e.target.value)}
+                className="bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-black dark:border-black rounded-xl px-4 py-3 text-slate-900 dark:text-white text-lg focus:outline-none focus:border-emerald-500 w-full"
+                required
+              >
+                <option value="" disabled>Select Category</option>
+                {isIncome ? (
+                  sortedCategories.map(c => <option key={c.name} value={c.name}>{tc(c.name)}</option>)
+                ) : (
+                  <optgroup label={tc('category')}>
+                    {sortedCategories.map(c => <option key={c.name} value={c.name}>{tc(c.name)}</option>)}
+                  </optgroup>
+                )}
+              </select>
+            </div>
 
           <div className="flex gap-3 w-full">
             {/* Date Container - 40% Width */}
             <div className="w-[40%] flex flex-col">
-              <label className="text-sm text-slate-400 mb-1">Date</label>
+              <label className="text-sm text-slate-500 dark:text-slate-400 mb-1">Date</label>
               <input 
                 type="date" 
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="bg-darkBg border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-emerald-500 w-full" 
+                className="bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-black dark:border-black rounded-lg p-3 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 w-full" 
               />
             </div>
 
             {/* Note Container - 60% Width */}
             <div className="w-[60%] flex flex-col">
-              <label className="text-sm text-slate-400 mb-1">Note</label>
+              <label className="text-sm text-slate-500 dark:text-slate-400 mb-1">Note</label>
               <input 
                 type="text" 
                 placeholder="(Optional)"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                className="bg-darkBg border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-emerald-500 w-full placeholder-slate-600" 
+                className="bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-black dark:border-black rounded-lg p-3 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 w-full placeholder-slate-400 dark:placeholder-slate-500" 
               />
             </div>
           </div>
@@ -175,8 +202,8 @@ export default function Modal({ isOpen, onClose, type, initialData }) {
             className={`w-full py-4 px-6 rounded-2xl font-black tracking-wide text-lg transition-all duration-300 transform mt-6 shadow-sm border
               ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}
               ${isIncome
-                ? 'bg-emerald-600 dark:bg-emerald-500/20 text-white dark:text-emerald-400 border-transparent dark:border-emerald-500/30 hover:bg-emerald-700 dark:hover:bg-emerald-500/30'
-                : 'bg-rose-600 dark:bg-rose-500/20 text-white dark:text-rose-400 border-transparent dark:border-rose-500/30 hover:bg-rose-700 dark:hover:bg-rose-500/30'
+                ? 'bg-emerald-600 text-white border-transparent hover:bg-emerald-700'
+                : 'bg-rose-600 text-white border-transparent hover:bg-rose-700'
               }`}
           >
             {isSubmitting ? 'Saving…' : t('save')}

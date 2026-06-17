@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, forwardRef } from 'react';
 
-export default function AmountInput({ 
+const AmountInput = forwardRef(({ 
   value, 
   onChange, 
   className = '', 
   ...props 
-}) {
+}, ref) => {
   const [error, setError] = useState(false);
 
   const triggerError = () => {
@@ -55,7 +55,9 @@ export default function AmountInput({
 
   return (
     <input
+      ref={ref}
       type="number"
+      step="0.01"
       value={value}
       onChange={handleChange}
       onKeyDown={handleKeyDown}
@@ -66,4 +68,6 @@ export default function AmountInput({
       {...props}
     />
   );
-}
+});
+
+export default AmountInput;

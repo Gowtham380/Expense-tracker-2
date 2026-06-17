@@ -13,7 +13,6 @@ const APP_SHELL = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/favicon.ico',
   '/logo192.png',
   '/logo512.png',
 ];

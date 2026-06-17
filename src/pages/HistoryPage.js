@@ -2,21 +2,24 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useExpense, formatINR, CATEGORIES } from '../context/ExpenseContext';
 import {
   Clock, Search, Trash2, Pencil, Check, X,
-  RefreshCw, ShieldCheck, Filter, TrendingUp, TrendingDown, XCircle, FileText,
+  RefreshCw, Lock, Filter, TrendingUp, TrendingDown, XCircle, FileText,
   MoreVertical
 } from 'lucide-react';
 import AmountInput from '../components/AmountInput';
 
 export default function HistoryPage() {
-  const { transactions, deleteTransaction, editTransaction, bulkDelete, isSyncing, customCategories, securePin, language, t, tc } = useExpense();
+  const { transactions = [], deleteTransaction, editTransaction, bulkDelete, isSyncing, customCategories, securePin, language, t, tc } = useExpense();
   const isTA = language === 'ta';
 
-  const [search, setSearch]       = useState('');
-  const [fromDate, setFromDate]   = useState('');
-  const [toDate, setToDate]       = useState('');
+  const [search, setSearch] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [visibleCount, setVisibleCount] = useState(20);
+
+  const loadMore = () => setVisibleCount(v => v + 20);
 
   // Auto-populate earliest date to today
   useEffect(() => {
@@ -25,17 +28,17 @@ export default function HistoryPage() {
       const sorted = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
       const firstDate = sorted[0].date; // Format: YYYY-MM-DD
       const today = new Date().toISOString().split('T')[0];
-      
+
       setFromDate(prev => prev || firstDate);
       setToDate(prev => prev || today);
     }
   }, [transactions]);
-  const [editingId, setEditingId]     = useState(null);
-  const [editForm, setEditForm]       = useState({});
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({});
 
-  const [showPwModal, setShowPwModal]   = useState(false);
-  const [pwInput, setPwInput]           = useState(['', '', '', '']);
-  const [pwError, setPwError]           = useState('');
+  const [showPwModal, setShowPwModal] = useState(false);
+  const [pwInput, setPwInput] = useState(['', '', '', '']);
+  const [pwError, setPwError] = useState('');
   const [pendingAction, setPendingAction] = useState(null);
   const pwRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
 
@@ -56,35 +59,46 @@ export default function HistoryPage() {
   }, [showPwModal]);
 
   // ── Sticky Header & Profile Logic ────────────────────────────────────
-  const [isScrolled, setIsScrolled] = useState(false);
-  useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  // const [isScrolled, setIsScrolled] = useState(false);
+  // useEffect(() => {
+  //   const handleScroll = () => setIsScrolled(window.scrollY > 20);
+  //   window.addEventListener('scroll', handleScroll, { passive: true });
+  //   return () => window.removeEventListener('scroll', handleScroll);
+  // }, []);
 
   const filtered = useMemo(() => {
-    const unifiedTransactions = [...transactions]; // Absolute flat unification, no category grouping
-    const q    = search.toLowerCase();
-    const from = fromDate ? new Date(fromDate) : null;
-    const to   = toDate   ? new Date(toDate + 'T23:59:59') : null;
-    return unifiedTransactions.filter(tx => {
-      const matchText = !q || (tx.desc || '').toLowerCase().includes(q) || (tx.category || '').toLowerCase().includes(q);
-      const txDate    = tx.date ? new Date(tx.date) : null;
-      const matchFrom = !from || (txDate && txDate >= from);
-      const matchTo   = !to   || (txDate && txDate <= to);
-      const matchType = typeFilter === 'all' || tx.type === typeFilter;
-      return matchText && matchFrom && matchTo && matchType;
-    }).sort((a, b) => {
-      const timeA = new Date(a.created_at || `${a.date}T00:00:00`).getTime();
-      const timeB = new Date(b.created_at || `${b.date}T00:00:00`).getTime();
-      return timeB - timeA; // Forces pure descending order (Desc) by created_at
-    });
+    try {
+      const unifiedTransactions = [...(transactions || [])]; // Absolute flat unification, no category grouping
+      const q = search.toLowerCase();
+      const from = fromDate ? new Date(fromDate) : null;
+      const to = toDate ? new Date(toDate + 'T23:59:59') : null;
+      
+      return unifiedTransactions.filter(tx => {
+        const matchText = !q || (tx.desc || '').toLowerCase().includes(q) || (tx.category || '').toLowerCase().includes(q);
+        const txDate = tx.date ? new Date(tx.date) : null;
+        const matchFrom = !from || (txDate && txDate >= from);
+        const matchTo = !to || (txDate && txDate <= to);
+        const matchType = typeFilter === 'all' || tx.type === typeFilter;
+        return matchText && matchFrom && matchTo && matchType;
+      }).sort((a, b) => {
+        const timeA = new Date(a.created_at || `${a.date}T00:00:00`).getTime();
+        const timeB = new Date(b.created_at || `${b.date}T00:00:00`).getTime();
+        return timeB - timeA; // Forces pure descending order (Desc) by created_at
+      });
+    } catch (err) {
+      console.error("Filter error:", err);
+      return [];
+    }
   }, [transactions, search, fromDate, toDate, typeFilter]);
 
-  const hasActiveFilters  = search || fromDate || toDate || typeFilter !== 'all';
-  const filteredIncome    = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const filteredExpense   = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(20);
+  }, [search, fromDate, toDate, typeFilter]);
+
+  const hasActiveFilters = search || fromDate || toDate || typeFilter !== 'all';
+  const filteredIncome = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const filteredExpense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
   const clearFilters = () => { setSearch(''); setFromDate(''); setToDate(''); setTypeFilter('all'); setSelectedIds(new Set()); };
 
@@ -161,7 +175,7 @@ export default function HistoryPage() {
     e?.stopPropagation();
     setOpenMenuId(null);
     if (type === 'edit') setEditForm({ amount: tx.amount, category: tx.category || '', date: tx.date ? new Date(tx.date).toISOString().split('T')[0] : '', desc: tx.desc || '' });
-    
+
     if (type === 'edit') {
       setEditingId(tx.id);
       return;
@@ -188,16 +202,16 @@ export default function HistoryPage() {
 
   const confirmPassword = () => {
     const pinStr = pwInput.join('');
-    if (pinStr.length < 4 || pinStr !== securePin) { 
-      setPwError('Incorrect PIN. Try again.'); 
-      setPwInput(['', '', '', '']); 
-      pwRefs[0].current?.focus(); 
-      return; 
+    if (pinStr.length < 4 || pinStr !== securePin) {
+      setPwError('Incorrect PIN. Try again.');
+      setPwInput(['', '', '', '']);
+      pwRefs[0].current?.focus();
+      return;
     }
     setShowPwModal(false);
-    if (pendingAction?.type === 'delete') { 
-      deleteTransaction(pendingAction.tx.id, pendingAction.tx.type); 
-      setSelectedIds(new Set()); 
+    if (pendingAction?.type === 'delete') {
+      deleteTransaction(pendingAction.tx.id, pendingAction.tx.type);
+      setSelectedIds(new Set());
     } else if (pendingAction?.type === 'bulk_delete') {
       executeBulkDelete();
     }
@@ -216,195 +230,224 @@ export default function HistoryPage() {
 
   const categoryOptions = customCategories ? customCategories.map(c => c.name) : [...CATEGORIES.INCOME, ...CATEGORIES.PERSONAL];
 
-  return (
-    <div className="w-full h-full flex flex-col relative animate-in fade-in pb-20 overflow-x-hidden">
+  // Handle infinite scroll using the global scroll container
+  useEffect(() => {
+    const handleScroll = (e) => {
+      const target = e.target;
+      if (Math.abs(target.scrollHeight - target.scrollTop - target.clientHeight) < 2) {
+        loadMore();
+      }
+    };
+    
+    const container = document.getElementById('main-scroll-container');
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+    }
+    
+    return () => {
+      if (container) {
+        container.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, [loadMore]);
 
-      {/* ── Password Modal ─────────────────────────────────────────────── */}
-      {showPwModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="glass-card w-full max-w-sm p-6 space-y-5 border border-white/20 shadow-2xl animate-in zoom-in-95">
-            <div className="flex items-center gap-3">
-              <ShieldCheck className="w-6 h-6 text-neonEmerald" />
-              <div>
-                <h3 className="font-bold text-lg">{t('confirm_action')}</h3>
-                <p className="text-xs text-gray-400">{t('enter_pin_to_delete')}</p>
-              </div>
-            </div>
-            
-            <div className="flex justify-center gap-3">
-              {[0, 1, 2, 3].map(i => (
-                <input
-                  key={i}
-                  ref={pwRefs[i]}
-                  type="password"
-                  maxLength={1}
-                  value={pwInput[i]}
-                  onChange={e => { handlePinChange(i, e.target.value); setPwError(''); }}
-                  onKeyDown={e => handlePinKeyDown(i, e)}
-                  className={`w-14 h-14 text-center text-2xl font-bold bg-darkBg/80 border ${pwError ? 'border-neonRose' : 'border-white/20 focus:border-neonEmerald'} rounded-xl shadow-inner outline-none transition-all`}
-                />
-              ))}
-            </div>
+  try {
+    return (
+      <div className="w-full relative animate-in fade-in pb-20 bg-slate-50 dark:bg-black">
 
-            {pwError && <p className="text-neonRose text-xs text-center">{pwError}</p>}
-            <div className="flex gap-3">
-              <button onClick={confirmPassword} className="flex-1 py-2.5 rounded-xl bg-neonEmerald/20 text-neonEmerald border border-neonEmerald/40 font-semibold hover:bg-neonEmerald hover:text-white transition-all flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Confirm</button>
-              <button onClick={cancelPassword} className="flex-1 py-2.5 rounded-xl bg-white/5 text-gray-400 border border-white/10 font-semibold hover:bg-white/10 transition-all flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+    {/* ── Password Modal ─────────────────────────────────────────────── */}
+    {showPwModal && (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+        <div className="bg-white dark:bg-[#0f172a] rounded-2xl w-full max-w-sm p-6 space-y-5 border border-slate-200 dark:border-black dark:border-black shadow-xl dark:shadow-2xl animate-in zoom-in-95">
+          <div className="flex flex-col items-center justify-center space-y-2 mb-4">
+            <div className="w-12 h-12 rounded-full bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center mb-2">
+              <Lock className="w-6 h-6 text-rose-500" />
             </div>
+            <h3 className="font-bold text-lg text-slate-900 dark:text-white">{t('confirm_action')}</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t('enter_pin_to_delete')}</p>
+          </div>
+
+          <div className="flex justify-center gap-3">
+            {[0, 1, 2, 3].map(i => (
+              <input
+                key={i}
+                ref={pwRefs[i]}
+                type="password"
+                maxLength={1}
+                value={pwInput[i]}
+                onChange={e => { handlePinChange(i, e.target.value); setPwError(''); }}
+                onKeyDown={e => handlePinKeyDown(i, e)}
+                className={`w-14 h-14 text-center text-2xl font-bold bg-slate-50 dark:bg-[#1e293b] border ${pwError ? 'border-rose-500 text-rose-600 dark:text-rose-400' : 'border-slate-200 dark:border-black dark:border-black focus:border-emerald-500 text-slate-900 dark:text-white'} rounded-xl shadow-sm outline-none transition-all`}
+              />
+            ))}
+          </div>
+
+          {pwError && <p className="text-rose-600 text-xs text-center font-semibold">{pwError}</p>}
+          <div className="flex gap-3">
+            <button onClick={confirmPassword} className="flex-1 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/40 font-semibold hover:bg-emerald-100 dark:hover:bg-emerald-500/30 transition-all flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Confirm</button>
+            <button onClick={cancelPassword} className="flex-1 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-black dark:border-black font-semibold hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"><X className="w-4 h-4" /> Cancel</button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ── Sticky Filter Header ──────────────────────────────────────── */}
+    <div className="sticky top-0 z-[50] w-full pt-2 px-2 md:max-w-4xl lg:max-w-5xl md:mx-auto">
+      <div className="relative overflow-hidden glass-premium rounded-2xl p-3 shadow-2xl transition-all duration-300">
+        <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 to-rose-500/20 blur-xl opacity-50"></div>
+        <div className="flex gap-2 items-center relative z-10">
+        <div className="relative flex-1 glass-premium rounded-xl shadow-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder={t('search')}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full bg-transparent pl-9 pr-8 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl"
+          />
+          {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 dark:hover:text-white"><X className="w-4 h-4" /></button>}
+        </div>
+        {selectedIds.size > 0 ? (
+          <button
+            onClick={handleBulkDelete}
+            className="p-2.5 bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl border border-rose-200 dark:border-rose-500/30 shadow-sm flex items-center gap-1 transition-all"
+          >
+            <Trash2 className="w-5 h-5" />
+            <span className="font-bold text-xs">{selectedIds.size}</span>
+          </button>
+        ) : (
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`p-2.5 rounded-xl glass-premium transition-colors shadow-sm ${showFilters ? 'text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500' : 'text-slate-500 dark:text-slate-400'}`}
+          >
+            <Filter className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+
+        {/* --- COLLAPSIBLE DRAWER --- */}
+        {showFilters && (
+          <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 pb-2 relative z-10">
+            <div className="flex items-center justify-between">
+            <h1 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+              <Clock className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> {t('history')}
+              {isSyncing && <span className="flex items-center gap-1 text-xs text-emerald-600 animate-pulse ml-2"><RefreshCw className="w-3 h-3 animate-spin" /> Syncing...</span>}
+            </h1>
+            <div className="flex items-center gap-2">
+              <button onClick={handlePrint} title="Print / Export PDF"
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold transition-all active:scale-[0.97] cursor-pointer">
+                <FileText className="w-3.5 h-3.5" /> PDF
+              </button>
+              {hasActiveFilters && (
+                <button onClick={clearFilters} className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 transition-all shadow-sm">
+                  <XCircle className="w-3.5 h-3.5" /> Clear
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Date row */}
+          <div className="flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] w-full items-center">
+            <div className="flex items-center gap-2 flex-1 bg-white dark:bg-[#1f2937] border border-slate-200 dark:border-black dark:border-black rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-white shadow-sm dark:shadow-none">
+              <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="bg-transparent text-slate-900 dark:text-white focus:outline-none w-full cursor-pointer" title="From" />
+            </div>
+            <div className="flex items-center gap-2 flex-1 bg-white dark:bg-[#1f2937] border border-slate-200 dark:border-black dark:border-black rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-white shadow-sm dark:shadow-none">
+              <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="bg-transparent text-slate-900 dark:text-white focus:outline-none w-full cursor-pointer" title="To" />
+            </div>
+          </div>
+
+          <div className="flex bg-white dark:bg-[#1f2937] shadow-sm dark:shadow-none border border-slate-200 dark:border-black dark:border-black rounded-xl p-1 gap-1">
+            {[{ val: 'all', label: isTA ? 'அனைத்தும்' : 'All' }, { val: 'income', label: <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> }, { val: 'expense', label: <TrendingDown className="w-4 h-4 text-rose-600 dark:text-rose-400" /> }].map(({ val, label }) => (
+              <button key={val} onClick={() => setTypeFilter(val)}
+                className={`flex-1 flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex-shrink-0 ${typeFilter === val
+                  ? val === 'income' ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/40 shadow-sm'
+                    : val === 'expense' ? 'bg-rose-50 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/40 shadow-sm'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white border border-slate-300 dark:border-black dark:border-black shadow-sm'
+                  : 'text-slate-500 border border-transparent hover:text-slate-900 dark:hover:text-white'
+                  }`}>
+                {label}
+              </button>
+            ))}
           </div>
         </div>
       )}
 
-      {/* ── Sticky Filter Header ──────────────────────────────────────── */}
-      <div className="sticky top-0 z-50 w-full bg-darkBg border-b border-slate-800/50 px-4 py-3 shadow-md">
-        <div className="flex gap-2 items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder={t('search')} 
-              value={search} 
-              onChange={e => setSearch(e.target.value)} 
-              className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-            />
-            {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>}
+      {/* Summary (Always visible) */}
+      {filtered.length > 0 && (
+        <div className="flex items-center justify-between text-[10px] sm:text-xs text-slate-500 pt-2 mt-2 border-t border-white/10 w-full overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <span className="whitespace-nowrap mr-3">{filtered.length} entry{filtered.length !== 1 ? 's' : ''}</span>
+          <div className="flex gap-2 sm:gap-3 whitespace-nowrap">
+            <span className="text-emerald-600 font-semibold">+{formatINR(filteredIncome)}</span>
+            <span className="text-rose-600 font-semibold">−{formatINR(filteredExpense)}</span>
+            <span className={`font-bold ${filteredIncome - filteredExpense >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>Net {formatINR(filteredIncome - filteredExpense)}</span>
           </div>
-          <button 
-            onClick={() => setShowFilters(!showFilters)} 
-            className={`p-2.5 rounded-xl border transition-colors ${showFilters ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : 'bg-slate-800/50 border-slate-700/50 text-slate-400'}`}
-          >
-            <Filter className="w-5 h-5" />
-          </button>
         </div>
-
-        {/* --- COLLAPSIBLE DRAWER --- */}
-        {showFilters && (
-          <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 pb-2">
-            <div className="flex items-center justify-between">
-              <h1 className="font-bold text-white text-sm flex items-center gap-2">
-                <Clock className="w-4 h-4 text-emerald-500" /> {t('history')}
-                {isSyncing && <span className="flex items-center gap-1 text-xs text-emerald-500 animate-pulse ml-2"><RefreshCw className="w-3 h-3 animate-spin" /> Syncing...</span>}
-              </h1>
-              <div className="flex items-center gap-2">
-                <button onClick={handlePrint} title="Print / Export PDF"
-                  className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 rounded-lg text-xs font-bold transition-all active:scale-[0.97] cursor-pointer">
-                  <FileText className="w-3.5 h-3.5" /> PDF
-                </button>
-                {selectedIds.size > 0 && (
-                  <button onClick={handleBulkDelete} className="bg-rose-500/10 border border-rose-500/20 text-rose-400 py-1 px-2.5 rounded-lg flex items-center gap-1.5 text-xs font-bold">
-                    <Trash2 className="w-3.5 h-3.5" /> ({selectedIds.size})
-                  </button>
-                )}
-                {hasActiveFilters && (
-                  <button onClick={clearFilters} className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 transition-all">
-                    <XCircle className="w-3.5 h-3.5" /> Clear
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Date row */}
-            <div className="flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] w-full items-center">
-              <div className="flex items-center gap-2 flex-1 bg-slate-800/50 border border-slate-700/50 rounded-xl px-3 py-2 text-xs font-bold">
-                <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="bg-transparent text-white focus:outline-none w-full cursor-pointer [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert" title="From" />
-              </div>
-              <div className="flex items-center gap-2 flex-1 bg-slate-800/50 border border-slate-700/50 rounded-xl px-3 py-2 text-xs font-bold">
-                <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="bg-transparent text-white focus:outline-none w-full cursor-pointer [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert" title="To" />
-              </div>
-            </div>
-
-            {/* Type Filter */}
-            <div className="flex bg-slate-800/50 border border-slate-700/50 rounded-xl p-1 gap-1">
-              {[{ val: 'all', label: isTA ? 'அனைத்தும்' : 'All' }, { val: 'income', label: <TrendingUp className="w-4 h-4 text-emerald-400" /> }, { val: 'expense', label: <TrendingDown className="w-4 h-4 text-rose-400" /> }].map(({ val, label }) => (
-                <button key={val} onClick={() => setTypeFilter(val)}
-                  className={`flex-1 flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex-shrink-0 ${
-                    typeFilter === val 
-                      ? val === 'income' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50' 
-                      : val === 'expense' ? 'bg-rose-500/20 text-rose-400 border-rose-500/50'
-                      : 'bg-slate-500/20 text-white border-slate-500/50'
-                      : 'text-slate-400 border-transparent hover:text-white'
-                  }`}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Summary (Always visible) */}
-        {filtered.length > 0 && (
-          <div className="flex items-center justify-between text-[10px] sm:text-xs text-slate-400 pt-2 mt-2 border-t border-slate-800/50 w-full overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            <span className="whitespace-nowrap mr-3">{filtered.length} entry{filtered.length !== 1 ? 's' : ''}</span>
-            <div className="flex gap-2 sm:gap-3 whitespace-nowrap">
-              <span className="text-emerald-400 font-semibold">+{formatINR(filteredIncome)}</span>
-              <span className="text-rose-400 font-semibold">−{formatINR(filteredExpense)}</span>
-              <span className={`font-bold ${filteredIncome - filteredExpense >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>Net {formatINR(filteredIncome - filteredExpense)}</span>
-            </div>
-          </div>
-        )}
+      )}
       </div>
+    </div>
 
-      {/* ── Scrollable Body Content ─────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-4 space-y-4 pt-4 pb-20">
-        
+    {/* ── Scrollable Body Content ─────────────────────────────────────── */}
+    <div className="w-full space-y-3 p-4 bg-slate-50 dark:bg-black">
+
       {/* ── Transaction List ───────────────────────────────────────────── */}
-      <div className="glass-card p-2 md:p-3 min-h-[40vh] mt-4">
+      <div className="p-2 md:p-3 min-h-[40vh] mt-4">
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-gray-500 gap-3">
+          <div className="flex flex-col items-center justify-center py-16 text-slate-500 gap-3">
             <Search className="w-10 h-10 opacity-20" />
             <p className="font-semibold text-sm">No transactions found</p>
-            {hasActiveFilters && <button onClick={clearFilters} className="text-xs text-neonEmerald underline">Clear all filters</button>}
+            {hasActiveFilters && <button onClick={clearFilters} className="text-xs text-emerald-600 underline">Clear all filters</button>}
           </div>
         ) : (
-          <div className="flex flex-col divide-y divide-white/5">
-            {filtered.map(tx => (
+          <div className="flex flex-col space-y-2 pb-16">
+            {filtered.slice(0, visibleCount).map(tx => (
               <div key={tx.id} onClick={() => toggleSelect(tx.id)}
-                className={`bg-white dark:bg-slate-900/40 border border-slate-200/80 dark:border-white/[0.05] rounded-xl px-4 py-3.5 flex items-center justify-between gap-3 mb-2.5 transition-shadow hover:shadow-sm cursor-pointer active:scale-[0.98] ${
-                  selectedIds.has(tx.id) ? 'bg-slate-50 dark:bg-slate-800/50' : ''
-                }`}>
+                className={`p-4 premium-card border-l-4 rounded-xl flex items-center justify-between gap-3 transition-colors duration-300 hover:shadow-lg cursor-pointer active:scale-[0.98] ${tx.type === 'income' ? 'border-l-emerald-500' : 'border-l-rose-500'
+                  } ${selectedIds.has(tx.id) ? 'ring-1 ring-emerald-500/50 bg-slate-50 dark:bg-[#1f2937]' : ''
+                  }`}>
 
                 {/* Checkbox + Type icon */}
-                <div className={`w-9 h-9 rounded-full border flex-shrink-0 flex items-center justify-center transition-all ${
-                  selectedIds.has(tx.id)
-                    ? 'bg-indigo-500 border-indigo-500 text-white'
-                    : tx.type === 'income'
-                      ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-500/30'
-                      : 'bg-rose-50 border-rose-200 dark:bg-rose-900/20 dark:border-rose-500/30'
-                }`}>
+                <div className={`w-9 h-9 rounded-full border flex-shrink-0 flex items-center justify-center transition-all ${selectedIds.has(tx.id)
+                  ? 'bg-emerald-500 border-emerald-500 text-white'
+                  : tx.type === 'income'
+                    ? 'bg-emerald-50 border-emerald-200'
+                    : 'bg-rose-50 border-rose-200'
+                  }`}>
                   {selectedIds.has(tx.id)
                     ? <Check className="w-4 h-4" />
                     : tx.type === 'income'
-                      ? <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                      : <TrendingDown className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                      ? <TrendingUp className="w-4 h-4 text-emerald-600" />
+                      : <TrendingDown className="w-4 h-4 text-rose-600" />
                   }
                 </div>
 
                 {/* Main content */}
                 <div className="flex-1 min-w-0">
                   {editingId === tx.id ? (
-                    <div className="py-2 space-y-2 bg-black/40 p-3 rounded-xl border border-white/5" onClick={e => e.stopPropagation()}>
-                      <AmountInput value={editForm.amount} onChange={e => setEditForm({ ...editForm, amount: e.target.value })} className="glass-input w-full py-1.5 text-sm" />
-                      <select value={editForm.category} onChange={e => setEditForm({ ...editForm, category: e.target.value })} className="glass-input w-full py-1.5 text-sm [&>option]:bg-darkCard">
+                    <div className="py-2 space-y-2 bg-slate-50 dark:bg-[#1e293b] p-3 rounded-xl border border-slate-200 dark:border-black dark:border-black shadow-sm" onClick={e => e.stopPropagation()}>
+                      <AmountInput value={editForm.amount} onChange={e => setEditForm({ ...editForm, amount: e.target.value })} className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-black dark:border-black rounded-lg px-3 w-full py-1.5 text-sm dark:text-white" />
+                      <select value={editForm.category} onChange={e => setEditForm({ ...editForm, category: e.target.value })} className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-black dark:border-black rounded-lg px-3 w-full py-1.5 text-sm dark:text-white">
                         {categoryOptions.map(c => <option key={c} value={c}>{tc(c)}</option>)}
                       </select>
                       <div className="flex gap-2">
-                        <input type="date" value={editForm.date} onChange={e => setEditForm({ ...editForm, date: e.target.value })} className="glass-input flex-1 py-1.5 text-sm text-gray-300" />
-                        <input type="text" value={editForm.desc} onChange={e => setEditForm({ ...editForm, desc: e.target.value })} className="glass-input flex-1 py-1.5 text-sm" placeholder="Notes…" />
+                        <input type="date" value={editForm.date} onChange={e => setEditForm({ ...editForm, date: e.target.value })} className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-black dark:border-black rounded-lg px-3 flex-1 py-1.5 text-sm text-slate-900 dark:text-white" />
+                        <input type="text" value={editForm.desc} onChange={e => setEditForm({ ...editForm, desc: e.target.value })} className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-black dark:border-black rounded-lg px-3 flex-1 py-1.5 text-sm dark:text-white" placeholder="Notes…" />
                       </div>
-                      <div className="flex gap-2 pt-1 border-t border-white/10">
-                        <button onClick={e => saveEdit(e, tx)} className="flex-1 py-2.5 rounded-lg bg-neonEmerald/20 text-neonEmerald text-xs font-bold hover:bg-neonEmerald hover:text-white transition-all active:scale-95">Save</button>
-                        <button onClick={cancelEdit} className="flex-1 py-2.5 rounded-lg bg-white/5 text-gray-400 text-xs font-bold hover:bg-white/10 transition-all active:scale-95">Cancel</button>
+                      <div className="flex gap-2 pt-1 border-t border-slate-200 dark:border-black dark:border-black mt-2">
+                        <button onClick={e => saveEdit(e, tx)} className="flex-1 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/40 shadow-sm text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-500/30 transition-all active:scale-95">Save</button>
+                        <button onClick={cancelEdit} className="flex-1 py-2 rounded-lg bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-black dark:border-black shadow-sm text-slate-600 dark:text-slate-400 text-xs font-bold hover:bg-slate-50 dark:hover:bg-[#1e293b] transition-all active:scale-95">Cancel</button>
                       </div>
                     </div>
                   ) : (
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <span className="text-[#0f172a] dark:text-slate-100 font-bold text-sm uppercase tracking-wide">{tc(tx.category) || 'Misc'}</span>
-                        <p className="text-[#0f172a]/80 dark:text-slate-300 font-medium text-xs truncate leading-tight mt-0.5">{tx.desc || <span className="text-[#0f172a]/50 dark:text-slate-500 italic text-xs">No notes</span>}</p>
-                        <p className="text-[#0f172a]/70 dark:text-slate-400 font-semibold text-xs mt-0.5">{tx.date ? new Date(tx.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Unknown Date'}</p>
+                        <span className="text-slate-900 dark:text-white font-bold text-sm uppercase tracking-wide">
+                          {tx.desc?.includes('Automated') ? `${tc(tx.category).toUpperCase()}: AUTOMATED ENTRY` : (tc(tx.category) || 'Misc')}
+                        </span>
+                        <p className="text-slate-600 dark:text-slate-400 font-medium text-xs truncate leading-tight mt-0.5">{tx.desc || <span className="text-slate-400 dark:text-slate-500 italic text-xs">No notes</span>}</p>
+                        <p className="text-slate-500 dark:text-slate-400 font-semibold text-xs mt-0.5">{tx.date ? new Date(tx.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Unknown Date'}</p>
                       </div>
                       <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <span className={`text-sm font-extrabold tracking-tight ${tx.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                        <span className={`text-sm font-extrabold tracking-tight ${tx.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
                           {tx.type === 'income' ? '+' : '−'}{formatINR(tx.amount)}
                         </span>
                         {!selectedIds.has(tx.id) && (
@@ -414,23 +457,23 @@ export default function HistoryPage() {
                                 e.stopPropagation();
                                 setOpenMenuId(openMenuId === tx.id ? null : tx.id);
                               }}
-                              className="p-1.5 hover:bg-white/10 rounded-lg transition-all text-gray-400 active:scale-90"
+                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all text-slate-400 active:scale-90"
                             >
                               <MoreVertical className="w-5 h-5" />
                             </button>
-                            
+
                             {/* 3-Dot Dropdown Overlay */}
                             {openMenuId === tx.id && (
-                              <div className="absolute right-0 top-full mt-1 w-36 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden" onClick={e => e.stopPropagation()}>
+                              <div className="absolute right-0 top-full mt-1 w-36 bg-white dark:bg-[#1f2937] border border-slate-200 dark:border-black dark:border-black rounded-xl shadow-xl dark:shadow-none dark:ring-1 dark:ring-slate-800 z-50 overflow-hidden" onClick={e => e.stopPropagation()}>
                                 <button
                                   onClick={(e) => requestAuth('edit', tx, e)}
-                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-slate-700 transition-colors"
+                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                                 >
-                                  <Pencil className="w-4 h-4 text-blue-400" /> Edit
+                                  <Pencil className="w-4 h-4 text-blue-500 dark:text-blue-400" /> Edit
                                 </button>
                                 <button
                                   onClick={(e) => requestAuth('delete', tx, e)}
-                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors border-t border-slate-700"
+                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors border-t border-slate-100 dark:border-black"
                                 >
                                   <Trash2 className="w-4 h-4" /> Delete
                                 </button>
@@ -447,7 +490,20 @@ export default function HistoryPage() {
           </div>
         )}
       </div>
-      </div>
     </div>
-  );
+    </div>
+    );
+  } catch (error) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center p-6 bg-slate-50 dark:bg-black text-slate-900 dark:text-white">
+        <div className="bg-rose-50 dark:bg-rose-500/10 p-6 rounded-2xl border border-rose-200 dark:border-rose-500/20 max-w-md w-full">
+          <div className="flex items-center gap-3 mb-4">
+            <XCircle className="w-8 h-8 text-rose-500" />
+            <h2 className="text-xl font-bold text-rose-600 dark:text-rose-400">Render Error</h2>
+          </div>
+          <p className="text-sm font-mono whitespace-pre-wrap p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-black dark:border-black">{error.message}</p>
+        </div>
+      </div>
+    );
+  }
 }

@@ -23,7 +23,7 @@ export default function Navigation({ activeTab, setActiveTab }) {
               <button
                 onClick={() => setActiveTab(item.id)}
                 className={`w-full flex flex-col items-center py-2 transition-all duration-300 ${
-                  isActive ? 'text-neonEmerald' : 'text-gray-400 hover:text-white'
+                  isActive ? 'text-neonEmerald' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <div className={`relative p-2 rounded-xl transition-all ${isActive ? 'bg-neonEmerald/10' : ''}`}>

@@ -15,6 +15,9 @@ module.exports = {
         darkBg: '#050709',
         darkCard: '#0D1117',
       },
+      borderWidth: {
+        '0': '0',
+      },
     },
   },
   plugins: [],

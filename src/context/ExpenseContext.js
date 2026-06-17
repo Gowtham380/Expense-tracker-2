@@ -43,6 +43,7 @@ const initialState = {
   recurringReminders: savedMirror?.recurringReminders || [],
   savingsTarget: savedMirror?.savingsTarget || 0,
   themeMode: savedMirror?.themeMode || 'dark',
+  calculationPeriod: savedMirror?.calculationPeriod || 'daily',
 };
 
 function expenseReducer(state, action) {
@@ -67,6 +68,7 @@ function expenseReducer(state, action) {
     case 'SET_BILLS': return { ...state, bills: action.payload };
     case 'SET_SAVINGS_TARGET': return { ...state, savingsTarget: action.payload };
     case 'SET_THEME_MODE': return { ...state, themeMode: action.payload };
+    case 'SET_CALCULATION_PERIOD': return { ...state, calculationPeriod: action.payload };
     default: return state;
   }
 }
@@ -86,6 +88,22 @@ export function ExpenseProvider({ children, propSession }) {
   const [dbSetupRequired, setDbSetupRequired] = useState(false);
   const [dbConnectionError, setDbConnectionError] = useState(false);
   const [userAvatar, setUserAvatar] = useState(null);
+  const [isRecoveringPassword, setIsRecoveringPassword] = useState(false);
+
+  const [userProfile, setUserProfile] = useState(() => {
+    const saved = localStorage.getItem('expense_user_profile');
+    return saved ? JSON.parse(saved) : {
+      name: '',
+      type: '',
+      frequency: 'monthly',
+      language: 'en',
+      theme: 'light'
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('expense_user_profile', JSON.stringify(userProfile));
+  }, [userProfile]);
 
   // ── stateRef: always holds the latest state without being a dep ───────────
   // This lets useCallback functions read current state without stale closures,
@@ -125,8 +143,11 @@ export function ExpenseProvider({ children, propSession }) {
     });
 
     // Establish persistent pipeline broadcast listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsRecoveringPassword(true);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -214,6 +235,10 @@ export function ExpenseProvider({ children, propSession }) {
           payload.bills = settingsRes.data.bills || initialState.bills;
           payload.savingsTarget = settingsRes.data.savingsTarget || initialState.savingsTarget;
           payload.themeMode = settingsRes.data.appmode || initialState.themeMode;
+          payload.calculationPeriod = payload.categoryBudgets?.__calculation_period || 'daily';
+          if (payload.categoryBudgets?.__user_profile) {
+            setUserProfile(payload.categoryBudgets.__user_profile);
+          }
         }
 
         dispatch({ type: 'SET_FULL_STATE', payload });
@@ -238,20 +263,40 @@ export function ExpenseProvider({ children, propSession }) {
     setIsSyncing(true);
     try {
       const s = stateRef.current;
+      
+      const targetCategoryBudgets = updates.categoryBudgets !== undefined 
+        ? updates.categoryBudgets 
+        : s.categoryBudgets;
+      const targetCalculationPeriod = updates.calculationPeriod !== undefined 
+        ? updates.calculationPeriod 
+        : s.calculationPeriod;
+
+      const mergedCategoryBudgets = { 
+        ...targetCategoryBudgets, 
+        __calculation_period: targetCalculationPeriod 
+      };
+
       const currentSettings = {
-        language: s.language, categoryBudgets: s.categoryBudgets,
-        bills: s.bills, savingsTarget: s.savingsTarget,
-        custom_categories: s.customCategories,
-        isPasswordProtected: s.isPinProtected,
-        secure_pin: s.securePin,
-        appmode: s.themeMode,
-        ...updates
+        language: updates.language !== undefined ? updates.language : s.language,
+        categoryBudgets: mergedCategoryBudgets,
+        savingsTarget: updates.savingsTarget !== undefined ? updates.savingsTarget : s.savingsTarget,
+        custom_categories: updates.customCategories !== undefined ? updates.customCategories : s.customCategories,
+        isPasswordProtected: updates.isPinProtected !== undefined ? updates.isPinProtected : s.isPinProtected,
+        secure_pin: updates.securePin !== undefined ? updates.securePin : s.securePin,
+        appmode: updates.themeMode !== undefined ? updates.themeMode : s.themeMode,
+        bills: updates.bills !== undefined ? updates.bills : s.bills,
+        recurring_reminders: updates.recurring_reminders !== undefined ? updates.recurring_reminders : s.recurringReminders,
       };
       if (updates.customCategories !== undefined) {
         currentSettings.custom_categories = updates.customCategories;
         delete currentSettings.customCategories;
       }
-      await supabase.from('user_settings').upsert(currentSettings);
+      // Set key schema updates
+      const { error } = await supabase.from('user_settings').upsert({
+        user_id: userId,
+        ...currentSettings
+      });
+      if (error) throw error;
     } catch (e) { console.error('Settings sync failed:', e); }
     setIsSyncing(false);
   }, [userId, dbSetupRequired, dbConnectionError]);
@@ -470,7 +515,7 @@ export function ExpenseProvider({ children, propSession }) {
 
   const setThemeMode = useCallback((mode) => {
     dispatch({ type: 'SET_THEME_MODE', payload: mode });
-    syncSettings({ appmode: mode });
+    syncSettings({ themeMode: mode });
   }, [syncSettings]);
 
   const addRecurringReminder = useCallback((reminder) => {
@@ -483,6 +528,11 @@ export function ExpenseProvider({ children, propSession }) {
     const updated = stateRef.current.recurringReminders.filter(r => r.id !== id);
     dispatch({ type: 'SET_RECURRING_REMINDERS', payload: updated });
     syncSettings({ recurring_reminders: updated });
+  }, [syncSettings]);
+
+  const setCalculationPeriod = useCallback((period) => {
+    dispatch({ type: 'SET_CALCULATION_PERIOD', payload: period });
+    syncSettings({ calculationPeriod: period });
   }, [syncSettings]);
 
   // ── OPTIMIZATION: Translation helpers are stable per language change ──────
@@ -501,16 +551,18 @@ export function ExpenseProvider({ children, propSession }) {
     recurringReminders: state.recurringReminders, addRecurringReminder, deleteRecurringReminder,
     savingsTarget: state.savingsTarget, setSavingsTarget,
     themeMode: state.themeMode, setThemeMode,
-    isSyncing, session, isAuthLoading, isSyncComplete, dbSetupRequired, dbConnectionError, userAvatar,
+    calculationPeriod: state.calculationPeriod, setCalculationPeriod,
+    userProfile, setUserProfile,
+    isSyncing, session, isAuthLoading, isSyncComplete, dbSetupRequired, dbConnectionError, userAvatar, isRecoveringPassword, setIsRecoveringPassword,
     addSale, addExpense, editTransaction, deleteTransaction, bulkDelete,
     switchLanguage, setCategoryBudget, addCustomCategory, deleteCustomCategory, setPinProtected, setSecurePin, t, tc
   }), [
     state.transactions,
     state.categoryBudgets, state.customCategories, state.isPinProtected, state.securePin, state.language, state.bills, state.recurringReminders,
-    state.savingsTarget, state.themeMode,
-    isSyncing, session, isAuthLoading, isSyncComplete, dbSetupRequired, dbConnectionError, userAvatar,
+    state.savingsTarget, state.themeMode, state.calculationPeriod, userProfile,
+    isSyncing, session, isAuthLoading, isSyncComplete, dbSetupRequired, dbConnectionError, userAvatar, isRecoveringPassword,
     addSale, addExpense, editTransaction, deleteTransaction, bulkDelete,
-    switchLanguage, setCategoryBudget, addCustomCategory, deleteCustomCategory, setPinProtected, setSecurePin, setBills, addRecurringReminder, deleteRecurringReminder, setSavingsTarget, setThemeMode, t, tc
+    switchLanguage, setCategoryBudget, addCustomCategory, deleteCustomCategory, setPinProtected, setSecurePin, setBills, addRecurringReminder, deleteRecurringReminder, setSavingsTarget, setThemeMode, setCalculationPeriod, t, tc
   ]);
 
   // ── 🛡️ ULTRA-MAX HIGH-LEVEL DATABASE AUDIT & INTEGRITY SUITE ──────────
