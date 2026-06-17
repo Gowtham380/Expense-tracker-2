@@ -4,7 +4,7 @@ import { showToast } from '../utils/toast';
 import { TRANSLATIONS } from '../utils/localization';
 
 export const CATEGORIES = {
-  PERSONAL: ['Salary', 'Rent', 'Food', 'Transport', 'Utilities', 'Medical', 'Entertainment'],
+  PERSONAL: ['Rent', 'Food', 'Transport', 'Utilities', 'Medical', 'Entertainment'],
   INCOME: ['Salary', 'Other Income'],
 };
 
@@ -89,6 +89,18 @@ export function ExpenseProvider({ children, propSession }) {
   const [dbConnectionError, setDbConnectionError] = useState(false);
   const [userAvatar, setUserAvatar] = useState(null);
   const [isRecoveringPassword, setIsRecoveringPassword] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
 
   const [userProfile, setUserProfile] = useState(() => {
     const saved = localStorage.getItem('expense_user_profile');
@@ -248,6 +260,7 @@ export function ExpenseProvider({ children, propSession }) {
       } catch (e) {
         console.error('Cloud sync failed:', e);
         setDbConnectionError(true);
+        showToast('Database synchronization failed. Offline mode engaged.', 'error');
       }
       setIsSyncing(false);
     };
@@ -297,7 +310,10 @@ export function ExpenseProvider({ children, propSession }) {
         ...currentSettings
       });
       if (error) throw error;
-    } catch (e) { console.error('Settings sync failed:', e); }
+    } catch (e) {
+      console.error('Settings sync failed:', e);
+      showToast('Cloud setting synchronization failed.', 'warning');
+    }
     setIsSyncing(false);
   }, [userId, dbSetupRequired, dbConnectionError]);
 
@@ -459,8 +475,19 @@ export function ExpenseProvider({ children, propSession }) {
     if (dbSetupRequired || dbConnectionError) return;
     dispatch({ type: 'BULK_DELETE', payload: [...(idsByType.income || []), ...(idsByType.expense || [])] });
     setIsSyncing(true);
-    if (idsByType.income?.length) await supabase.from('sales').delete().in('id', idsByType.income).eq('user_id', userId);
-    if (idsByType.expense?.length) await supabase.from('expenses').delete().in('id', idsByType.expense).eq('user_id', userId);
+    try {
+      if (idsByType.income?.length) {
+        const { error } = await supabase.from('sales').delete().in('id', idsByType.income).eq('user_id', userId);
+        if (error) throw error;
+      }
+      if (idsByType.expense?.length) {
+        const { error } = await supabase.from('expenses').delete().in('id', idsByType.expense).eq('user_id', userId);
+        if (error) throw error;
+      }
+    } catch (err) {
+      console.error('Bulk delete failed:', err);
+      showToast('Bulk delete failed. Re-syncing database.', 'error');
+    }
     setIsSyncing(false);
   }, [userId, isSyncComplete, dbSetupRequired, dbConnectionError]);
 
@@ -555,14 +582,16 @@ export function ExpenseProvider({ children, propSession }) {
     userProfile, setUserProfile,
     isSyncing, session, isAuthLoading, isSyncComplete, dbSetupRequired, dbConnectionError, userAvatar, isRecoveringPassword, setIsRecoveringPassword,
     addSale, addExpense, editTransaction, deleteTransaction, bulkDelete,
-    switchLanguage, setCategoryBudget, addCustomCategory, deleteCustomCategory, setPinProtected, setSecurePin, t, tc
+    switchLanguage, setCategoryBudget, addCustomCategory, deleteCustomCategory, setPinProtected, setSecurePin, t, tc,
+    deferredPrompt, setDeferredPrompt
   }), [
     state.transactions,
     state.categoryBudgets, state.customCategories, state.isPinProtected, state.securePin, state.language, state.bills, state.recurringReminders,
     state.savingsTarget, state.themeMode, state.calculationPeriod, userProfile,
     isSyncing, session, isAuthLoading, isSyncComplete, dbSetupRequired, dbConnectionError, userAvatar, isRecoveringPassword,
     addSale, addExpense, editTransaction, deleteTransaction, bulkDelete,
-    switchLanguage, setCategoryBudget, addCustomCategory, deleteCustomCategory, setPinProtected, setSecurePin, setBills, addRecurringReminder, deleteRecurringReminder, setSavingsTarget, setThemeMode, setCalculationPeriod, t, tc
+    switchLanguage, setCategoryBudget, addCustomCategory, deleteCustomCategory, setPinProtected, setSecurePin, setBills, addRecurringReminder, deleteRecurringReminder, setSavingsTarget, setThemeMode, setCalculationPeriod, t, tc,
+    deferredPrompt, setDeferredPrompt
   ]);
 
   // ── 🛡️ ULTRA-MAX HIGH-LEVEL DATABASE AUDIT & INTEGRITY SUITE ──────────

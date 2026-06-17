@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useExpense, formatINR, CATEGORIES } from '../context/ExpenseContext';
 import {
   Clock, Search, Trash2, Pencil, Check, X,
@@ -19,7 +19,7 @@ export default function HistoryPage() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [visibleCount, setVisibleCount] = useState(20);
 
-  const loadMore = () => setVisibleCount(v => v + 20);
+  const loadMore = useCallback(() => setVisibleCount(v => v + 20), []);
 
   // Auto-populate earliest date to today
   useEffect(() => {

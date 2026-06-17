@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Modal from '../components/Modals';
 import { useExpense, formatINR } from '../context/ExpenseContext';
+import { showToast } from '../utils/toast';
 import {
   Plus, Minus, TrendingUp, TrendingDown,
-  CloudLightning, CheckCircle2, AlertTriangle, X, Wallet, RefreshCcw, Activity
+  CloudLightning, CheckCircle2, AlertTriangle, X, Wallet, RefreshCcw, Activity, Sparkles
 } from 'lucide-react';
 import FinancialHealth from '../components/FinancialHealth';
 
@@ -217,14 +218,39 @@ export default function DashboardPage() {
   const {
     transactions, t, tc,
     isSyncing, dbSetupRequired, dbConnectionError,
-    addExpense, bills, language, userProfile
+    addExpense, bills, language, userProfile,
+    deferredPrompt, setDeferredPrompt
   } = useExpense();
 
   const [modalState, setModalState] = useState({ type: null, data: null });
   const [dismissedBills, setDismissedBills] = useState(new Set());
-  const [visibleCount, setVisibleCount] = useState(10);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
 
-  const loadMore = () => setVisibleCount(v => v + 10);
+  useEffect(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+    if (deferredPrompt && !isStandalone) {
+      setShowInstallBanner(true);
+    } else {
+      setShowInstallBanner(false);
+    }
+  }, [deferredPrompt]);
+
+  const handleInstall = async () => {
+    if (!deferredPrompt) {
+      showToast(
+        language === 'ta' 
+          ? 'இந்த உலாவியில் நிறுவல் ஆதரவு இல்லை. Chrome/Edge விருப்பங்களைப் பயன்படுத்தவும்.' 
+          : 'Installation prompt not supported by this browser. Try Chrome/Edge menu options.', 
+        'info'
+      );
+      return;
+    }
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`PWA install outcome: ${outcome}`);
+    setDeferredPrompt(null);
+    setShowInstallBanner(false);
+  };
 
   const closeModel = () => setModalState({ type: null, data: null });
   const today    = new Date();
@@ -311,6 +337,40 @@ export default function DashboardPage() {
 
       {/* ── Content Wrapper ─────────────────────────────────────── */}
       <div className="px-4 pb-24 space-y-6 animate-in fade-in">
+
+        {/* PWA Install Banner */}
+        {showInstallBanner && (
+          <div className="glass-premium p-4 rounded-2xl flex justify-between items-center shadow-lg border border-slate-200 dark:border-white/10 relative overflow-hidden animate-in slide-in-from-top-5 duration-300 md:max-w-4xl lg:max-w-5xl md:mx-auto">
+            <div className="absolute -right-6 -top-6 w-16 h-16 bg-emerald-500/10 blur-xl rounded-full pointer-events-none" />
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-emerald-500/20 rounded-xl">
+                <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-900 dark:text-white">
+                  {language === 'ta' ? 'Expenza-ஐ முகப்புத் திரையில் சேர்க்கவா?' : 'Add Expenza to Home Screen?'}
+                </p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  {language === 'ta' ? 'வேகமான அணுகல் மற்றும் ஆஃப்லைன் பயன்பாடு' : 'Fast access, offline-ready & mobile native feel'}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 relative z-10">
+              <button 
+                onClick={() => setShowInstallBanner(false)} 
+                className="text-xs font-bold px-2.5 py-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+              >
+                {language === 'ta' ? 'நீக்கு' : 'Dismiss'}
+              </button>
+              <button 
+                onClick={handleInstall} 
+                className="bg-emerald-600 dark:bg-emerald-500 hover:bg-emerald-700 dark:hover:bg-emerald-600 text-white px-3.5 py-1.5 rounded-xl text-xs font-black shadow-md transition-all active:scale-95"
+              >
+                {language === 'ta' ? 'நிறுவு' : 'Install'}
+              </button>
+            </div>
+          </div>
+        )}
 
       {/* ── Error Banners ─────────────────────────────────────── */}
       {dbSetupRequired && (

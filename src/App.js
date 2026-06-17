@@ -13,7 +13,7 @@ import UpdatePassword from './components/UpdatePassword';
 // Internal router to manage bottom nav
 const AppShell = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
-  const { isSyncing, session, isAuthLoading, isSyncComplete, customCategories, recurringReminders, addSale, addExpense, language, isRecoveringPassword, setIsRecoveringPassword, userProfile } = useExpense();
+  const { isSyncing, session, isAuthLoading, isSyncComplete, recurringReminders, addSale, addExpense, language, isRecoveringPassword, setIsRecoveringPassword, userProfile } = useExpense();
 
   const syncRemindersToHistory = React.useCallback(() => {
     if (!isSyncComplete || !recurringReminders || recurringReminders.length === 0) return;

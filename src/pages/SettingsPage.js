@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useExpense } from '../context/ExpenseContext';
-import { LogOut, KeyRound, Lock, Unlock, Plus, X, Store, Tags, ShieldCheck, Star } from 'lucide-react';
+import { LogOut, KeyRound, Lock, Unlock, Plus, X, Store, Tags, ShieldCheck, Star, Sparkles } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import AmountInput from '../components/AmountInput';
 import { showToast } from '../utils/toast';
@@ -14,7 +14,8 @@ export default function SettingsPage() {
     language, switchLanguage,
     recurringReminders, addRecurringReminder, deleteRecurringReminder,
     themeMode, setThemeMode,
-    t, tc, session 
+    t, tc, session,
+    deferredPrompt, setDeferredPrompt
   } = useExpense();
 
   const [newCustomCat, setNewCustomCat] = useState('');
@@ -108,6 +109,7 @@ export default function SettingsPage() {
     }
 
     // ── Save ────────────────────────────────────────────────────────────────
+    setIsSubmitting(true);
     const safeAmount = Math.round(numericAmount * 100) / 100;
     addRecurringReminder({
       id: 'rem_' + Date.now().toString(),
@@ -127,6 +129,7 @@ export default function SettingsPage() {
     showToast(language === 'ta' ? 'நினைவூட்டல் வெற்றிகரமாக சேர்க்கப்பட்டது!' : 'Reminder added successfully!', 'success');
     setRemCat('');
     setRemAmount('');
+    setTimeout(() => setIsSubmitting(false), 300);
   };
 
   const handleVerifyCurrent = () => {
@@ -163,6 +166,9 @@ export default function SettingsPage() {
 
   const activeCategoriesList = customCategories?.filter(c => c.type === activeCatTab).map(c => c.name) || [];
 
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
   // Guard against early render
   if (!session?.user) {
     return <div className="flex justify-center p-10 text-slate-500">Authenticating...</div>;
@@ -195,6 +201,54 @@ export default function SettingsPage() {
           </button>
         </div>
       </header>
+
+      {/* Mobile PWA Install Nudge Banner */}
+      {isMobile && !isStandalone && (
+        <div className="max-w-2xl mx-auto px-4 mb-6">
+          <div className="relative overflow-hidden glass-premium rounded-2xl p-5 border border-amber-500/20 bg-amber-500/5 dark:bg-amber-500/5 shadow-lg flex flex-col gap-4 animate-in slide-in-from-top-4 duration-300">
+            <div className="absolute -right-8 -top-8 w-24 h-24 bg-amber-500/10 blur-2xl rounded-full pointer-events-none" />
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-2xl shrink-0">
+                <Sparkles className="w-6 h-6 animate-pulse" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                  {language === 'ta' ? 'Expenza Pro-ஐ மொபைல் ஆப்பாக மாற்றுக!' : 'Install Expenza Pro Mobile App!'}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  {language === 'ta' 
+                    ? 'வேகமான அணுகல், ஆஃப்லைன் மோட் மற்றும் முழுத்திரை அனுபவத்திற்கு உடனே உங்கள் முகப்புத் திரையில் சேர்க்கவும்.' 
+                    : 'Get home screen quick access, automated reminders, and complete offline usability.'}
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-3 pt-2">
+              <button 
+                onClick={async () => {
+                  if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    console.log(`PWA settings install outcome: ${outcome}`);
+                    setDeferredPrompt(null);
+                  } else {
+                    showToast(
+                      language === 'ta'
+                        ? 'உலாவியின் பகிர்ந்து (Share) பொத்தானை அழுத்தி "முகப்புத் திரையில் சேர்" (Add to Home Screen) என்பதைத் தேர்ந்தெடுக்கவும்.'
+                        : 'Tap your browser\'s share menu and select "Add to Home Screen" to install.',
+                      'info'
+                    );
+                  }
+                }}
+                className="bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 text-white font-black text-xs px-5 py-3 rounded-xl shadow-md transition-all active:scale-[0.98] flex items-center gap-2 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                {language === 'ta' ? 'இப்போது நிறுவு' : 'INSTALL NOW'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-2xl mx-auto px-4 mt-8 space-y-6">
 

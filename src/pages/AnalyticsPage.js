@@ -130,17 +130,6 @@ export default function AnalyticsPage() {
   }, {});
   const barData = Object.values(trendMap).sort((a, b) => new Date(a.name) - new Date(b.name));
 
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (!active || !payload?.length) return null;
-    return (
-      <div className="bg-darkCard/95 border border-white/10 rounded-xl p-3 text-xs shadow-xl">
-        <p className="font-bold text-slate-200 mb-1">{label}</p>
-        {payload.map(p => (
-          <p key={p.name} style={{ color: p.color }}>{p.name}: {formatINR(p.value)}</p>
-        ))}
-      </div>
-    );
-  };
 
   return (
     <div className="w-full relative animate-in fade-in pb-20 bg-slate-50 dark:bg-black">

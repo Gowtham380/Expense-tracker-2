@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useExpense } from '../context/ExpenseContext';
 import { supabase } from '../supabaseClient';
-import { User, Globe, Check, ArrowRight, Activity, Sun, Moon, Briefcase, Store, Sparkles } from 'lucide-react';
+import { User, Globe, Check, ArrowRight, Activity, Sun, Moon, Briefcase, Store, Sparkles, Lock } from 'lucide-react';
 import ExpenzaLogo from '../assets/expenza-logo.png';
 
 export default function OnboardingScreen() {
-  const { session, switchLanguage, securePin, setSecurePin, setThemeMode, setUserProfile, categoryBudgets } = useExpense();
+  const { session, switchLanguage, setSecurePin, setThemeMode, setUserProfile, categoryBudgets } = useExpense();
   
   const [currentStep, setCurrentStep] = useState(1);
   const [name, setName] = useState('');
@@ -13,6 +13,9 @@ export default function OnboardingScreen() {
   const [userType, setUserType] = useState(''); // 'salary' or 'business'
   const [frequency, setFrequency] = useState('monthly'); // 'daily', 'weekly', 'monthly'
   const [theme, setTheme] = useState('dark'); // Default to dark for a stunning onboarding, will switch based on choice
+  const [pin, setPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [pinError, setPinError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleNextStep1 = () => {
@@ -38,6 +41,15 @@ export default function OnboardingScreen() {
   };
 
   const handleSubmit = async () => {
+    if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+      setPinError(selectedLang === 'ta' ? 'PIN 4 எண்கள் கொண்டதாக இருக்க வேண்டும்!' : 'PIN must be exactly 4 digits!');
+      return;
+    }
+    if (pin !== confirmPin) {
+      setPinError(selectedLang === 'ta' ? 'PIN-கள் பொருந்தவில்லை!' : 'PINs do not match!');
+      return;
+    }
+    setPinError('');
     setIsSubmitting(true);
     
     // Default Fallbacks constraint: if not selected or defaulted
@@ -58,8 +70,7 @@ export default function OnboardingScreen() {
     switchLanguage(finalLanguage);
     setThemeMode(finalTheme);
 
-    // Default PIN check
-    const finalPin = securePin || '1234';
+    const finalPin = pin;
 
     if (session?.user?.id) {
       try {
@@ -102,6 +113,8 @@ export default function OnboardingScreen() {
               ? (selectedLang === 'ta' ? 'சுயவிவர அமைவு' : 'Profile Setup')
               : currentStep === 2 
               ? (selectedLang === 'ta' ? 'பயன்பாட்டு வகை' : 'Income Model')
+              : currentStep === 3
+              ? (selectedLang === 'ta' ? 'பாதுகாப்பு பின்' : 'Security PIN')
               : (selectedLang === 'ta' ? 'காட்சி அமைவு' : 'Visual Preferences')}
           </h1>
           <p className="text-xs text-slate-400">
@@ -109,6 +122,8 @@ export default function OnboardingScreen() {
               ? (selectedLang === 'ta' ? 'உங்கள் பெயர் மற்றும் மொழியைத் தேர்ந்தெடுக்கவும்' : 'Configure baseline identity parameters')
               : currentStep === 2 
               ? (selectedLang === 'ta' ? 'தினசரி வரவை எவ்வாறு கணக்கிடுவது என தேர்வு செய்யவும்' : 'Let us tailor calculations to your revenue stream')
+              : currentStep === 3
+              ? (selectedLang === 'ta' ? 'உங்கள் கணக்கைப் பாதுகாக்க 4 இலக்க பின்னை அமைக்கவும்' : 'Secure your financial database with a 4-digit PIN')
               : (selectedLang === 'ta' ? 'விரும்பிய வண்ண அமைப்பைத் தேர்ந்தெடுக்கவும்' : 'Choose how you want the application to feel')}
           </p>
         </div>
@@ -272,6 +287,63 @@ export default function OnboardingScreen() {
 
               <button
                 type="button"
+                onClick={() => setCurrentStep(4)}
+                className="w-full mt-8 py-3.5 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold text-sm border border-emerald-500/50 hover:bg-emerald-500 hover:text-white transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.15)]"
+              >
+                {selectedLang === 'ta' ? 'தொடரவும்' : 'Continue'} <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Step 4: PIN Setup */}
+          {currentStep === 4 && (
+            <div className="space-y-6 animate-in slide-in-from-right-4 fade-in">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                  <Lock className="w-3.5 h-3.5 text-emerald-400" /> {selectedLang === 'ta' ? '4-இலக்க பின்னை அமைக்கவும்' : 'Set 4-Digit Secure PIN'}
+                </label>
+                <input
+                  type="password"
+                  pattern="[0-9]*"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={pin}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    setPin(val);
+                  }}
+                  placeholder="••••"
+                  className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3.5 text-center text-2xl tracking-[1em] text-white focus:border-emerald-500/50 outline-none transition-all placeholder:text-slate-600"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                  <Lock className="w-3.5 h-3.5 text-emerald-400" /> {selectedLang === 'ta' ? 'பின்னை உறுதிப்படுத்தவும்' : 'Confirm PIN'}
+                </label>
+                <input
+                  type="password"
+                  pattern="[0-9]*"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={confirmPin}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    setConfirmPin(val);
+                  }}
+                  placeholder="••••"
+                  className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3.5 text-center text-2xl tracking-[1em] text-white focus:border-emerald-500/50 outline-none transition-all placeholder:text-slate-600"
+                />
+              </div>
+
+              {pinError && (
+                <div className="text-rose-500 text-xs font-bold text-center mt-2 animate-pulse">
+                  {pinError}
+                </div>
+              )}
+
+              <button
+                type="button"
                 onClick={handleSubmit}
                 disabled={isSubmitting}
                 className="w-full mt-8 py-3.5 rounded-xl bg-emerald-500 text-white font-bold text-sm shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:bg-emerald-400 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
@@ -292,7 +364,7 @@ export default function OnboardingScreen() {
 
           {/* Progress Indicators */}
           <div className="flex justify-center gap-2 mt-8">
-            {[1, 2, 3].map(step => (
+            {[1, 2, 3, 4].map(step => (
               <div key={step} className={`h-1.5 rounded-full transition-all ${step === currentStep ? 'w-6 bg-emerald-400' : step < currentStep ? 'w-2 bg-emerald-500/50' : 'w-2 bg-white/10'}`} />
             ))}
           </div>
