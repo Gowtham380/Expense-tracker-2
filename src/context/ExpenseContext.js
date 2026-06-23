@@ -1,7 +1,14 @@
+/**
+ * @file ExpenseContext.js
+ * @description Core Context Provider managing Supabase cloud synchronization, offline caching, localization state, and transaction CRUD operations.
+ * @architectural_note: Implements a synchronous hydration engine and centralized setting-sync pipeline.
+ */
+
 import { createContext, useReducer, useEffect, useContext, useState, useMemo, useCallback, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { showToast } from '../utils/toast';
 import { TRANSLATIONS } from '../utils/localization';
+import { showBuiltinNotification } from '../utils/notification';
 
 export const CATEGORIES = {
   PERSONAL: ['Rent', 'Food', 'Transport', 'Utilities', 'Medical', 'Entertainment'],
@@ -10,7 +17,10 @@ export const CATEGORIES = {
 
 const ExpenseContext = createContext();
 
-// Synchronous Hydration Engine: Native and Instantaneous (No useEffect delay)
+/**
+ * Synchronous Hydration Engine.
+ * Hydrates state from localStorage before the first render pass to prevent paint flash.
+ */
 const savedMirror = JSON.parse(localStorage.getItem('expense_mirror') || 'null');
 
 const DEFAULT_BILLS = [
@@ -117,18 +127,23 @@ export function ExpenseProvider({ children, propSession }) {
     localStorage.setItem('expense_user_profile', JSON.stringify(userProfile));
   }, [userProfile]);
 
-  // ── stateRef: always holds the latest state without being a dep ───────────
-  // This lets useCallback functions read current state without stale closures,
-  // and without adding `state` as a dependency (which would re-create on every dispatch).
+  /**
+   * Reference pointer to the latest context state object.
+   * Enables useCallback helpers to query the latest state without triggering closure rebuilds.
+   */
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; }, [state]);
 
-  // 1. LocalSave Mechanism: Synchronously mirror any state mutation
+  /**
+   * Mirrors context state changes to localStorage for persistent offline availability.
+   */
   useEffect(() => {
     localStorage.setItem('expense_mirror', JSON.stringify(state));
   }, [state]);
 
-  // Global Theme Controller
+  /**
+   * Updates global theme classes on the document root element.
+   */
   useEffect(() => {
     const root = window.document.documentElement;
     if (state.themeMode === 'dark') {
@@ -140,7 +155,9 @@ export function ExpenseProvider({ children, propSession }) {
     }
   }, [state.themeMode]);
 
-  // 2. Auth Gatekeeper Core Logic
+  /**
+   * Monitors authentication state, session handshakes, and password recovery redirections.
+   */
   useEffect(() => {
     if (propSession) {
       setSession(propSession);
@@ -148,13 +165,11 @@ export function ExpenseProvider({ children, propSession }) {
       return;
     }
 
-    // Sync current session snapshot instantly
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setIsAuthLoading(false);
     });
 
-    // Establish persistent pipeline broadcast listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       if (event === 'PASSWORD_RECOVERY') {
@@ -213,7 +228,7 @@ export function ExpenseProvider({ children, propSession }) {
         if (unsyncedLocals.length > 0) {
           const newSales = unsyncedLocals
             .filter(t => t.type === 'income')
-            .map(({ amount, date, desc }) => ({ user_id: userId, amount, date, description: desc || '' }));
+            .map(({ amount, category, date, desc }) => ({ user_id: userId, amount, category, date, description: desc || '' }));
           const newExpenses = unsyncedLocals
             .filter(t => t.type === 'expense')
             .map(({ amount, category, date, desc }) => ({ user_id: userId, amount, category, date, description: desc || '' }));
@@ -232,8 +247,16 @@ export function ExpenseProvider({ children, propSession }) {
 
         if (settingsRes.data) {
           payload.language = settingsRes.data.language || 'en';
-          payload.categoryBudgets = settingsRes.data.categoryBudgets || initialState.categoryBudgets;
-          let cloudCats = settingsRes.data.custom_categories || DEFAULT_CATEGORIES;
+          payload.themeMode = settingsRes.data.appmode || initialState.themeMode;
+          
+          const cb = settingsRes.data.categorybudgets || {};
+          payload.categoryBudgets = cb;
+          payload.calculationPeriod = cb.__calculation_period || 'daily';
+          if (cb.__user_profile) {
+            setUserProfile(cb.__user_profile);
+          }
+
+          let cloudCats = cb.__custom_categories || settingsRes.data.custom_categories || DEFAULT_CATEGORIES;
           if (!Array.isArray(cloudCats)) {
             cloudCats = [
               ...(cloudCats.income || []).map(name => ({ name, type: 'income' })),
@@ -241,16 +264,11 @@ export function ExpenseProvider({ children, propSession }) {
             ];
           }
           payload.customCategories = cloudCats;
-          payload.recurringReminders = settingsRes.data.recurring_reminders || initialState.recurringReminders;
-          payload.isPinProtected = settingsRes.data.isPasswordProtected ?? initialState.isPinProtected;
-          payload.securePin = settingsRes.data.secure_pin || initialState.securePin;
-          payload.bills = settingsRes.data.bills || initialState.bills;
-          payload.savingsTarget = settingsRes.data.savingsTarget || initialState.savingsTarget;
-          payload.themeMode = settingsRes.data.appmode || initialState.themeMode;
-          payload.calculationPeriod = payload.categoryBudgets?.__calculation_period || 'daily';
-          if (payload.categoryBudgets?.__user_profile) {
-            setUserProfile(payload.categoryBudgets.__user_profile);
-          }
+          payload.recurringReminders = cb.__recurring_reminders || settingsRes.data.recurring_reminders || initialState.recurringReminders;
+          payload.isPinProtected = cb.__is_password_protected ?? settingsRes.data.isPasswordProtected ?? initialState.isPinProtected;
+          payload.securePin = cb.__secure_pin || settingsRes.data.secure_pin || initialState.securePin;
+          payload.bills = cb.__bills || settingsRes.data.bills || initialState.bills;
+          payload.savingsTarget = cb.__savings_target || settingsRes.data.savingsTarget || initialState.savingsTarget;
         }
 
         dispatch({ type: 'SET_FULL_STATE', payload });
@@ -286,28 +304,21 @@ export function ExpenseProvider({ children, propSession }) {
 
       const mergedCategoryBudgets = { 
         ...targetCategoryBudgets, 
-        __calculation_period: targetCalculationPeriod 
+        __calculation_period: targetCalculationPeriod,
+        __savings_target: updates.savingsTarget !== undefined ? updates.savingsTarget : s.savingsTarget,
+        __custom_categories: updates.customCategories !== undefined ? updates.customCategories : s.customCategories,
+        __is_password_protected: updates.isPinProtected !== undefined ? updates.isPinProtected : s.isPinProtected,
+        __secure_pin: updates.securePin !== undefined ? updates.securePin : s.securePin,
+        __bills: updates.bills !== undefined ? updates.bills : s.bills,
+        __recurring_reminders: updates.recurring_reminders !== undefined ? updates.recurring_reminders : s.recurringReminders,
       };
 
-      const currentSettings = {
-        language: updates.language !== undefined ? updates.language : s.language,
-        categoryBudgets: mergedCategoryBudgets,
-        savingsTarget: updates.savingsTarget !== undefined ? updates.savingsTarget : s.savingsTarget,
-        custom_categories: updates.customCategories !== undefined ? updates.customCategories : s.customCategories,
-        isPasswordProtected: updates.isPinProtected !== undefined ? updates.isPinProtected : s.isPinProtected,
-        secure_pin: updates.securePin !== undefined ? updates.securePin : s.securePin,
-        appmode: updates.themeMode !== undefined ? updates.themeMode : s.themeMode,
-        bills: updates.bills !== undefined ? updates.bills : s.bills,
-        recurring_reminders: updates.recurring_reminders !== undefined ? updates.recurring_reminders : s.recurringReminders,
-      };
-      if (updates.customCategories !== undefined) {
-        currentSettings.custom_categories = updates.customCategories;
-        delete currentSettings.customCategories;
-      }
       // Set key schema updates
       const { error } = await supabase.from('user_settings').upsert({
         user_id: userId,
-        ...currentSettings
+        language: updates.language !== undefined ? updates.language : s.language,
+        appmode: updates.themeMode !== undefined ? updates.themeMode : s.themeMode,
+        categorybudgets: mergedCategoryBudgets
       });
       if (error) throw error;
     } catch (e) {
@@ -334,6 +345,9 @@ export function ExpenseProvider({ children, propSession }) {
     return true;
   }, [isSyncComplete]);
 
+  const t = useCallback((key) => TRANSLATIONS[state.language]?.[key] || key, [state.language]);
+  const tc = useCallback((cat) => TRANSLATIONS[state.language]?.[cat] || cat, [state.language]);
+
   // ── OPTIMIZATION: All CRUD functions wrapped in useCallback ──────────────
 
   const addSale = useCallback(async (tx) => {
@@ -345,6 +359,7 @@ export function ExpenseProvider({ children, propSession }) {
       const cloudSale = {
         user_id: userId,
         amount: tx.amount,
+        category: tx.category,
         date: tx.date,
         description: tx.desc || '',
         created_at: new Date().toISOString()
@@ -360,6 +375,14 @@ export function ExpenseProvider({ children, propSession }) {
       if (data && data[0]) {
         dispatch({ type: 'ADD_TRANSACTION', payload: { ...data[0], type: 'income', desc: data[0].description } });
         showToast('Income saved successfully!', 'success');
+        
+        // Trigger browser native notification
+        const isAutomated = tx.desc && tx.desc.includes('Automated');
+        const title = stateRef.current.language === 'ta' 
+          ? (isAutomated ? 'தானியங்கி வருமானம் சேர்க்கப்பட்டது' : 'வருமானம் சேர்க்கப்பட்டது')
+          : (isAutomated ? 'Automated Income Added' : 'Income Added');
+        const body = `${tc(data[0].category || 'Salary')}: ${formatINR(data[0].amount)}`;
+        showBuiltinNotification(title, body);
       } else {
         showToast('Data may not have saved correctly. Please refresh.', 'warning');
       }
@@ -371,7 +394,7 @@ export function ExpenseProvider({ children, propSession }) {
       );
     }
     setIsSyncing(false);
-  }, [userId, validateSyncAndAmount]);
+  }, [userId, validateSyncAndAmount, tc]);
 
   const addExpense = useCallback(async (tx) => {
     if (!validateSyncAndAmount(tx.amount)) return;
@@ -398,6 +421,14 @@ export function ExpenseProvider({ children, propSession }) {
       if (data && data[0]) {
         dispatch({ type: 'ADD_TRANSACTION', payload: { ...data[0], type: 'expense', desc: data[0].description } });
         showToast('Expense saved successfully!', 'success');
+
+        // Trigger browser native notification
+        const isAutomated = tx.desc && tx.desc.includes('Automated');
+        const title = stateRef.current.language === 'ta'
+          ? (isAutomated ? 'தானியங்கி செலவு சேர்க்கப்பட்டது' : 'செலவு சேர்க்கப்பட்டது')
+          : (isAutomated ? 'Automated Expense Added' : 'Expense Added');
+        const body = `${tc(data[0].category)}: ${formatINR(data[0].amount)}`;
+        showBuiltinNotification(title, body);
       } else {
         showToast('Data may not have saved correctly. Please refresh.', 'warning');
       }
@@ -409,9 +440,10 @@ export function ExpenseProvider({ children, propSession }) {
       );
     }
     setIsSyncing(false);
-  }, [userId, validateSyncAndAmount]);
+  }, [userId, validateSyncAndAmount, tc]);
 
   const deleteTransaction = useCallback(async (id, type) => {
+    const tx = stateRef.current.transactions.find(t => t.id === id);
     dispatch({ type: 'DELETE_TRANSACTION', payload: id });
     if (!userId) return;
 
@@ -425,6 +457,16 @@ export function ExpenseProvider({ children, propSession }) {
         .eq('user_id', userId);
 
       if (error) throw error;
+
+      if (tx) {
+        const lang = stateRef.current.language || 'ta';
+        const title = lang === 'ta' 
+          ? (type === 'income' ? 'வருமானம் நீக்கப்பட்டது' : 'செலவு நீக்கப்பட்டது')
+          : (type === 'income' ? 'Income Deleted' : 'Expense Deleted');
+        const translatedCat = TRANSLATIONS[lang]?.[tx.category] || tx.category;
+        const body = `${translatedCat}: ${formatINR(tx.amount)}`;
+        showBuiltinNotification(title, body);
+      }
     } catch (err) {
       console.error('Delete failed:', err.message);
       showToast('Delete failed. Please try again.', 'error');
@@ -451,10 +493,10 @@ export function ExpenseProvider({ children, propSession }) {
       const cloudUpdate = {
         user_id: userId,
         amount: updatedTx.amount,
+        category: updatedTx.category,
         date: updatedTx.date,
         description: updatedTx.desc || ''
       };
-      if (type === 'expense') cloudUpdate.category = updatedTx.category;
 
       const { error } = await supabase
         .from(table)
@@ -473,6 +515,8 @@ export function ExpenseProvider({ children, propSession }) {
   const bulkDelete = useCallback(async (idsByType) => {
     if (!isSyncComplete) { showToast('Still syncing. Please wait.', 'warning'); return; }
     if (dbSetupRequired || dbConnectionError) return;
+
+    const count = (idsByType.income?.length || 0) + (idsByType.expense?.length || 0);
     dispatch({ type: 'BULK_DELETE', payload: [...(idsByType.income || []), ...(idsByType.expense || [])] });
     setIsSyncing(true);
     try {
@@ -483,6 +527,15 @@ export function ExpenseProvider({ children, propSession }) {
       if (idsByType.expense?.length) {
         const { error } = await supabase.from('expenses').delete().in('id', idsByType.expense).eq('user_id', userId);
         if (error) throw error;
+      }
+
+      if (count > 0) {
+        const lang = stateRef.current.language || 'ta';
+        const title = lang === 'ta' ? 'பதிவுகள் நீக்கப்பட்டன' : 'Entries Deleted';
+        const body = lang === 'ta' 
+          ? `${count} பதிவுகள் வெற்றிகரமாக நீக்கப்பட்டன.`
+          : `${count} entries deleted successfully.`;
+        showBuiltinNotification(title, body);
       }
     } catch (err) {
       console.error('Bulk delete failed:', err);
@@ -562,11 +615,6 @@ export function ExpenseProvider({ children, propSession }) {
     syncSettings({ calculationPeriod: period });
   }, [syncSettings]);
 
-  // ── OPTIMIZATION: Translation helpers are stable per language change ──────
-
-  const t = useCallback((key) => TRANSLATIONS[state.language]?.[key] || key, [state.language]);
-  const tc = useCallback((cat) => TRANSLATIONS[state.language]?.[cat] || cat, [state.language]);
-
   // ── OPTIMIZATION: Memoize the full context value object ───────────────────
   // Children only re-render when a value they actually use changes.
   const contextValue = useMemo(() => ({
@@ -594,16 +642,17 @@ export function ExpenseProvider({ children, propSession }) {
     deferredPrompt, setDeferredPrompt
   ]);
 
-  // ── 🛡️ ULTRA-MAX HIGH-LEVEL DATABASE AUDIT & INTEGRITY SUITE ──────────
+  /**
+   * Automated system audit suite verifying security posture, RLS constraints, and hydration boundaries in dev mode.
+   */
   useEffect(() => {
     if (process.env.NODE_ENV === 'development' && userId) {
       const executeSecurityAudit = async () => {
         console.log("🚀 STARTING ANTIGRAVITY DATABASE AUDIT SUITE...");
         const auditResults = [];
 
-        // 1. NULL-STATE SEEDING RESILIENCY CHECK
         const checkDataHydration = (data) => {
-          return Array.isArray(data) ? data : []; // Structural safety lock
+          return Array.isArray(data) ? data : [];
         };
         const simulatedNullData = checkDataHydration(null);
         auditResults.push({
@@ -612,12 +661,10 @@ export function ExpenseProvider({ children, propSession }) {
           Detail: 'Null arrays gracefully fallback to []'
         });
 
-        // 2. ROW LEVEL SECURITY (RLS) & ISOLATION LEAK AUDIT
         const verifySessionIsolation = async () => {
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) return "Audit Failed: No Active Auth Session";
 
-          // Attempt a cross-tenant data query simulation
           const { data } = await supabase
             .from('user_settings')
             .select('*')
@@ -638,15 +685,14 @@ export function ExpenseProvider({ children, propSession }) {
           Detail: rlsStatus.includes('PASS') ? '100% Secure' : 'Leak Detected'
         });
 
-        // 3. METRICS TIMEOUT & DATA INTEGRITY CONSTRAINT TEST
         let timeoutStatus = '❌ FAIL';
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s Latency Guard
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
           
           await supabase
             .from('user_settings')
-            .select('user_id') // Double-locked verification
+            .select('user_id')
             .limit(1)
             .abortSignal(controller.signal);
             
@@ -664,7 +710,6 @@ export function ExpenseProvider({ children, propSession }) {
           Detail: '5s Graceful Timeout Active'
         });
 
-        // 4. OFFLINE CACHE SYNCHRONIZATION
         auditResults.push({
           Test: 'Offline Cache Synchronization',
           Status: '✅ PASS',

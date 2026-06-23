@@ -10,7 +10,7 @@
     --card-bg: #ffffff;    /* Pure white card */
     --border-color: rgba(15, 23, 42, 0.08); /* Clean hairline borders */
     /* CENTRALIZED OPACITY CONTROL */
-    --glass-opacity-light: 0.55;
+    --glass-opacity-light: 0.25;
     --glass-opacity-dark: 0.15;
     --glass-blur: 20px;
   }
@@ -39,6 +39,15 @@
   body {
     background-color: var(--bg-primary) !important;
     @apply text-slate-900 dark:text-white antialiased selection:bg-neonEmerald selection:text-white font-sans transition-colors duration-500;
+  }
+
+  /* Invert native date picker calendar icon for dark mode visibility */
+  .dark input[type="date"] {
+    color-scheme: dark;
+  }
+  .dark input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
   }
 }
 
@@ -172,18 +181,29 @@
   }
 
   /* ── Custom Premium Scrollbar for overflow containers ── */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
+  }
   .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
+    width: 4px;
+    height: 4px;
   }
   .custom-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(30, 41, 59, 0.5); /* slate-800 equivalent with opacity */
-    border-radius: 10px;
+    background: rgba(156, 163, 175, 0.3);
+    border-radius: 9999px;
   }
   .custom-scrollbar:hover::-webkit-scrollbar-thumb {
-    background: rgba(51, 65, 85, 0.8); /* slate-700 on hover */
+    background: rgba(156, 163, 175, 0.5);
+  }
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  .dark .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.4);
   }
 
   /* ── Utility: safe-area padding for notched phones ── */

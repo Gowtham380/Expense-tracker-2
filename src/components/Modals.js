@@ -140,7 +140,7 @@ export default function Modal({ isOpen, onClose, type, initialData }) {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm text-slate-500 dark:text-slate-400 mb-1">Amount (₹)</label>
+              <label className="block text-sm text-slate-500 dark:text-slate-400 mb-1">{t('amount_label')}</label>
               <AmountInput 
                 ref={amountRef}
                 required autoFocus
@@ -152,14 +152,14 @@ export default function Modal({ isOpen, onClose, type, initialData }) {
             </div>
 
             <div>
-              <label className="block text-sm text-slate-500 dark:text-slate-400 mb-1">Category</label>
+              <label className="block text-sm text-slate-500 dark:text-slate-400 mb-1">{t('category_label')}</label>
               <select 
                 value={category} 
                 onChange={(e) => setCategory(e.target.value)}
                 className="bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-black dark:border-black rounded-xl px-4 py-3 text-slate-900 dark:text-white text-lg focus:outline-none focus:border-emerald-500 w-full"
                 required
               >
-                <option value="" disabled>Select Category</option>
+                <option value="" disabled>{t('select_category')}</option>
                 {isIncome ? (
                   sortedCategories.map(c => <option key={c.name} value={c.name}>{tc(c.name)}</option>)
                 ) : (
@@ -173,7 +173,7 @@ export default function Modal({ isOpen, onClose, type, initialData }) {
           <div className="flex gap-3 w-full">
             {/* Date Container - 40% Width */}
             <div className="w-[40%] flex flex-col">
-              <label className="text-sm text-slate-500 dark:text-slate-400 mb-1">Date</label>
+              <label className="text-sm text-slate-500 dark:text-slate-400 mb-1">{t('date_label')}</label>
               <input 
                 type="date" 
                 required
@@ -185,10 +185,10 @@ export default function Modal({ isOpen, onClose, type, initialData }) {
 
             {/* Note Container - 60% Width */}
             <div className="w-[60%] flex flex-col">
-              <label className="text-sm text-slate-500 dark:text-slate-400 mb-1">Note</label>
+              <label className="text-sm text-slate-500 dark:text-slate-400 mb-1">{t('note_label')}</label>
               <input 
                 type="text" 
-                placeholder="(Optional)"
+                placeholder={t('optional_placeholder')}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 className="bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-black dark:border-black rounded-lg p-3 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 w-full placeholder-slate-400 dark:placeholder-slate-500" 
@@ -206,7 +206,7 @@ export default function Modal({ isOpen, onClose, type, initialData }) {
                 : 'bg-rose-600 text-white border-transparent hover:bg-rose-700'
               }`}
           >
-            {isSubmitting ? 'Saving…' : t('save')}
+            {isSubmitting ? t('saving') : t('save')}
           </button>
         </form>
       </div>

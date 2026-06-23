@@ -1,0 +1,9 @@
+
+> expense-tracker@0.1.0 test
+> react-scripts test src/pages/AnalyticsPage.test.js -t " renders AnalyticsPage and shows initial filtered sums\
+
+  Invalid testPattern src\\pages\\AnalyticsPage.test.js|renders|AnalyticsPage|and|shows|initial|filtered|sums\ supplied. Running all tests instead.
+  Invalid testPattern src\\pages\\AnalyticsPage.test.js|renders|AnalyticsPage|and|shows|initial|filtered|sums\ supplied. Running all tests instead.
+
+
+

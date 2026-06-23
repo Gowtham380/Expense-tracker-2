@@ -1,3 +1,9 @@
+/**
+ * @file App.js
+ * @description Main application shell. Controls routing, onboarding, authentication gates, and scheduled reminder evaluation loops.
+ * @architectural_note: Configures viewport limits to mobile simulation bounds (412px wide on desktop viewports).
+ */
+
 import React, { useState } from 'react';
 import { ExpenseProvider, useExpense } from './context/ExpenseContext';
 import NavMenu from './components/NavMenu';
@@ -9,12 +15,15 @@ import LoginPage from './components/LoginPage';
 import OnboardingScreen from './components/OnboardingScreen';
 import Toast from './components/Toast';
 import UpdatePassword from './components/UpdatePassword';
+import { requestNotificationPermission, showBuiltinNotification } from './utils/notification';
 
-// Internal router to manage bottom nav
 const AppShell = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const { isSyncing, session, isAuthLoading, isSyncComplete, recurringReminders, addSale, addExpense, language, isRecoveringPassword, setIsRecoveringPassword, userProfile } = useExpense();
 
+  /**
+   * Synchronizes active recurring reminders to history. Evaluated on sync completion.
+   */
   const syncRemindersToHistory = React.useCallback(() => {
     if (!isSyncComplete || !recurringReminders || recurringReminders.length === 0) return;
     const today = new Date();
@@ -34,7 +43,7 @@ const AppShell = () => {
       }
 
       if (isTriggerDay && !localStorage.getItem(fireKey)) {
-        const isoDate = today.toISOString().split('T')[0];
+        const isoDate = today.toLocaleDateString('sv-SE');
         if (rem.type === 'income') {
           addSale({
             amount: rem.amount,
@@ -45,7 +54,7 @@ const AppShell = () => {
         } else {
           addExpense({
             amount: rem.amount,
-            category: rem.category || 'Misc',
+            category: rem.category || 'Other',
             date: isoDate,
             desc: `Automated Entry`
           });
@@ -57,6 +66,8 @@ const AppShell = () => {
 
   // Background Evaluation Loop Hook for Automated Reminders
   React.useEffect(() => {
+    requestNotificationPermission();
+
     window.triggerTestNotification = () => {
       // Forcefully ignore today's real machine date and simulate an active match alert
       const taMsg = "திட்டமிடப்பட்ட நினைவூட்டல்: Rent-க்கான ₹10,000-ஐப் பதிவு செய்ய கிளிக் செய்யவும்!";
@@ -66,25 +77,31 @@ const AppShell = () => {
       } else {
         alert(language === 'ta' ? taMsg : enMsg);
       }
+      // Also trigger browser built-in notification
+      showBuiltinNotification(
+        language === 'ta' ? 'திட்டமிடப்பட்ட நினைவூட்டல்' : 'Scheduled Entry Alert',
+        language === 'ta' ? 'Rent-க்கான ₹10,000-ஐப் பதிவு செய்ய கிளிக் செய்யவும்!' : 'Tap to log your monthly ₹10,000 for Rent.'
+      );
     };
 
     syncRemindersToHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [syncRemindersToHistory]);
+  }, [syncRemindersToHistory, language]);
 
 
 
-  // The Auth-Gate Protector: Show UI during auth load, drop to login only if confirmed NO session.
+  /**
+   * Router gates: Redirects unauthenticated users to Login, password recovery to UpdatePassword,
+   * and profiles without name/type configurations to the Onboarding wizard.
+   */
   if (!isAuthLoading && !session) {
     return <LoginPage />;
   }
 
-  // Password Recovery Gate
   if (isRecoveringPassword) {
     return <UpdatePassword onClose={() => setIsRecoveringPassword(false)} />;
   }
 
-  // The Onboarding Gate: If logged in but no profile is set, force onboarding
   if (!isAuthLoading && session && isSyncComplete && (!userProfile?.name || !userProfile?.type)) {
     return <OnboardingScreen />;
   }
@@ -101,8 +118,6 @@ const AppShell = () => {
 
   return (
     <div className="flex-1 flex flex-col h-full w-full relative">
-
-      {/* --- 1. ISOLATED SCROLLABLE BODY FOR PAGES --- */}
       <div id="main-scroll-container" className="flex-1 overflow-y-auto overflow-x-hidden pb-20 px-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <Toast />
         {(isSyncing || isAuthLoading) && (
@@ -117,7 +132,6 @@ const AppShell = () => {
         {renderPage()}
       </div>
 
-      {/* --- 2. FIXED NAVIGATION BAR (Pinned tightly to the bottom) --- */}
       <div className="w-full">
         <NavMenu currentPage={currentPage} setCurrentPage={setCurrentPage} />
       </div>

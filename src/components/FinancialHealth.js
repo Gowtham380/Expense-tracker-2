@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { differenceInDays, endOfMonth } from 'date-fns';
 import { useExpense, formatINR } from '../context/ExpenseContext';
-import { TrendingUp, TrendingDown, PiggyBank, AlertTriangle } from 'lucide-react';
+import { TrendingUp, TrendingDown, PiggyBank, AlertTriangle, Wallet } from 'lucide-react';
 import AmountInput from './AmountInput';
 
 export default function FinancialHealth() {
@@ -106,22 +106,36 @@ export default function FinancialHealth() {
           )}
         </div>
 
-        <div className="grid grid-cols-2 sm:flex sm:flex-col gap-4 sm:gap-3 mt-4 mb-6">
-          <div className="col-span-1 flex flex-col justify-center sm:items-start bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-black dark:border-black p-3 rounded-xl min-w-0">
-            <div className="text-slate-400 text-sm mb-1 flex items-center gap-2">
-              <TrendingUp className="text-emerald-600 dark:text-emerald-400 w-4 h-4" /> {isTA ? 'வருமானம்' : 'Income'}
+        <div className="flex flex-col gap-3.5 mt-4 mb-6">
+          {/* Income Row */}
+          <div className="flex flex-col justify-center bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-black p-3.5 rounded-xl min-w-0">
+            <div className="text-slate-400 text-xs font-bold tracking-wider uppercase mb-1.5 flex items-center gap-2">
+              <TrendingUp className="text-emerald-600 dark:text-emerald-400 w-4 h-4" />
+              {isTA ? 'வருமானம்' : 'Income'}
             </div>
-            <div className="text-xl sm:text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 truncate max-w-full block" title={formatINR(totalIncome)}>{formatINR(totalIncome)}</div>
-          </div>
-          <div className="col-span-1 flex flex-col justify-center sm:items-start bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-black dark:border-black p-3 rounded-xl min-w-0">
-            <div className="text-slate-400 text-sm mb-1 flex items-center gap-2">
-              <TrendingDown className="text-rose-600 dark:text-rose-400 w-4 h-4" /> {isTA ? 'செலவு' : 'Expenses'}
+            <div className="text-xl sm:text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 truncate max-w-full block" title={formatINR(totalIncome)}>
+              {formatINR(totalIncome)}
             </div>
-            <div className="text-xl sm:text-2xl font-extrabold text-rose-600 dark:text-rose-400 truncate max-w-full block" title={formatINR(totalExpenses)}>{formatINR(totalExpenses)}</div>
           </div>
-          <div className="col-span-2 flex flex-row sm:flex-col justify-between sm:justify-center items-center sm:items-start bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-black dark:border-black p-3 rounded-xl mt-2 sm:mt-0 min-w-0">
-            <div className="text-slate-400 text-sm whitespace-nowrap sm:mb-1">{isTA ? 'எதிர்பார்க்கும் இருப்பு' : 'Predicted Balance'}</div>
-            <div className={`text-xl sm:text-2xl font-extrabold truncate max-w-full block sm:pl-0 pl-4 ${predictedEndBalance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`} title={formatINR(predictedEndBalance)}>
+
+          {/* Expenses Row */}
+          <div className="flex flex-col justify-center bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-black p-3.5 rounded-xl min-w-0">
+            <div className="text-slate-400 text-xs font-bold tracking-wider uppercase mb-1.5 flex items-center gap-2">
+              <TrendingDown className="text-rose-600 dark:text-rose-400 w-4 h-4" />
+              {isTA ? 'செலவு' : 'Expenses'}
+            </div>
+            <div className="text-xl sm:text-2xl font-extrabold text-rose-600 dark:text-rose-400 truncate max-w-full block" title={formatINR(totalExpenses)}>
+              {formatINR(totalExpenses)}
+            </div>
+          </div>
+
+          {/* Predicted Balance Row */}
+          <div className="flex flex-col justify-center bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-black p-3.5 rounded-xl min-w-0">
+            <div className="text-slate-400 text-xs font-bold tracking-wider uppercase mb-1.5 flex items-center gap-2">
+              <Wallet className={`w-4 h-4 ${predictedEndBalance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`} />
+              {isTA ? 'எதிர்பார்க்கும் இருப்பு' : 'Predicted Balance'}
+            </div>
+            <div className={`text-xl sm:text-2xl font-extrabold truncate max-w-full block ${predictedEndBalance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`} title={formatINR(predictedEndBalance)}>
               {formatINR(predictedEndBalance)}
             </div>
           </div>

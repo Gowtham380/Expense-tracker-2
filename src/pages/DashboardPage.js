@@ -1,11 +1,18 @@
+/**
+ * @file DashboardPage.js
+ * @description Provides the central transaction summaries, dashboard widgets, and PDF monthly export notification mechanics.
+ * @architectural_note: Employs a custom layout architecture for single-column KPI matrices and automated monthly reminders.
+ */
+
 import React, { useState, useEffect, useRef } from 'react';
 import Modal from '../components/Modals';
 import { useExpense, formatINR } from '../context/ExpenseContext';
 import { showToast } from '../utils/toast';
 import {
   Plus, Minus, TrendingUp, TrendingDown,
-  CloudLightning, CheckCircle2, AlertTriangle, X, Wallet, RefreshCcw, Activity, Sparkles
+  CloudLightning, CheckCircle2, AlertTriangle, X, Wallet, RefreshCcw, Activity, Sparkles, FileText
 } from 'lucide-react';
+import { showBuiltinNotification } from '../utils/notification';
 import FinancialHealth from '../components/FinancialHealth';
 
 // ── Smart Infinite Metrics Ticker Component ─────────────────────────────────
@@ -225,6 +232,20 @@ export default function DashboardPage() {
   const [modalState, setModalState] = useState({ type: null, data: null });
   const [dismissedBills, setDismissedBills] = useState(new Set());
   const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [showPdfBanner, setShowPdfBanner] = useState(false);
+
+  const today = new Date();
+  const todayDay = today.getDate();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+
+  let lastMonthYear = today.getFullYear();
+  let lastMonthIndex = today.getMonth() - 1;
+  if (lastMonthIndex < 0) {
+    lastMonthIndex = 11;
+    lastMonthYear -= 1;
+  }
+  const lastMonthStr = `${lastMonthYear}-${String(lastMonthIndex + 1).padStart(2, '0')}`;
 
   useEffect(() => {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
@@ -234,6 +255,34 @@ export default function DashboardPage() {
       setShowInstallBanner(false);
     }
   }, [deferredPrompt]);
+
+  useEffect(() => {
+    const currentToday = new Date();
+    const isDayThreeOrLater = currentToday.getDate() >= 3;
+    const isExported = localStorage.getItem(`exported_pdf_${lastMonthStr}`) === 'true';
+    if (isDayThreeOrLater && !isExported) {
+      setShowPdfBanner(true);
+
+      const monthsEN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const monthsTA = ['ஜனவரி', 'பிப்ரவரி', 'மார்ச்', 'ஏப்ரல்', 'மே', 'ஜூன்', 'ஜூலை', 'ஆகஸ்ட்', 'செப்டம்பர்', 'அக்டோபர்', 'நவம்பர்', 'டிசம்பர்'];
+      const lastMonthName = language === 'ta' ? monthsTA[lastMonthIndex] : monthsEN[lastMonthIndex];
+      
+      const toastMsg = language === 'ta'
+        ? `கடந்த மாத (${lastMonthName}) PDF அறிக்கையை ஏற்றுமதி செய்யவும்!`
+        : `Please export last month's (${lastMonthName}) PDF report!`;
+      
+      const timer = setTimeout(() => {
+        showToast(toastMsg, 'warning');
+        showBuiltinNotification(
+          language === 'ta' ? 'அறிக்கை ஏற்றுமதி' : 'Report Export Required',
+          toastMsg
+        );
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowPdfBanner(false);
+    }
+  }, [language, transactions, lastMonthStr, lastMonthIndex]);
 
   const handleInstall = async () => {
     if (!deferredPrompt) {
@@ -253,10 +302,6 @@ export default function DashboardPage() {
   };
 
   const closeModel = () => setModalState({ type: null, data: null });
-  const today    = new Date();
-  const todayDay = today.getDate();
-  const currentMonth = today.getMonth();
-  const currentYear  = today.getFullYear();
 
   // ── Bill Payment Check ────────────────────────────────────────────────
   const isPaidThisMonth = (bill) => transactions.some(tx => {
@@ -281,13 +326,86 @@ export default function DashboardPage() {
     addExpense({
       amount: bill.amount,
       category: bill.category,
-      date: new Date().toISOString(),
+      date: new Date().toLocaleDateString('sv-SE'),
       desc: `${bill.name} - ${today.toLocaleString('default', { month: 'long', year: 'numeric' })}`
     });
   };
 
   const handleDismissBill = (bill) => {
     setDismissedBills(prev => new Set([...prev, bill.id]));
+  };
+
+  const handleExportLastMonthPdf = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      showToast(
+        language === 'ta' ? 'பாப்-அப் தடுக்கப்பட்டது!' : 'Pop-up blocked! Please allow pop-ups.', 
+        'error'
+      );
+      return;
+    }
+
+    const monthsEN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthsTA = ['ஜனவரி', 'பிப்ரவரி', 'மார்ச்', 'ஏப்ரல்', 'மே', 'ஜூன்', 'ஜூலை', 'ஆகஸ்ட்', 'செப்டம்பர்', 'அக்டோபர்', 'நவம்பர்', 'டிசம்பர்'];
+    const lastMonthName = language === 'ta' ? monthsTA[lastMonthIndex] : monthsEN[lastMonthIndex];
+
+    const lastMonthTxs = (transactions || []).filter(tx => {
+      if (!tx.date) return false;
+      const d = new Date(tx.date);
+      return d.getFullYear() === lastMonthYear && d.getMonth() === lastMonthIndex;
+    });
+
+    const monthlyIncome = lastMonthTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const monthlyExpense = lastMonthTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const isTA = language === 'ta';
+
+    const rows = lastMonthTxs.map(tx => `
+      <tr>
+        <td style="border:1px solid #ccc;padding:8px">${tx.date ? new Date(tx.date).toLocaleDateString('en-IN') : '-'}</td>
+        <td style="border:1px solid #ccc;padding:8px">${tc(tx.category) || '-'}</td>
+        <td style="border:1px solid #ccc;padding:8px">${tx.desc || '-'}</td>
+        <td style="border:1px solid #ccc;padding:8px;text-align:right;font-family:monospace">₹ ${Math.abs(tx.amount || 0).toFixed(2)}</td>
+        <td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;color:${tx.type === 'income' ? 'green' : 'red'}">${tx.type === 'income' ? 'INCOME' : 'EXPENSE'}</td>
+      </tr>`).join('');
+
+    printWindow.document.write(`
+      <html><head><title>Expense Report - ${lastMonthName} ${lastMonthYear}</title></head>
+      <body style="font-family:sans-serif;padding:24px;color:#111">
+        <h1 style="font-size:24px;font-weight:900;border-bottom:3px solid #111;padding-bottom:8px;margin-bottom:16px">
+          ${isTA ? `நிதி அறிக்கை - ${lastMonthName} ${lastMonthYear}` : `Financial Statement - ${lastMonthName} ${lastMonthYear}`}
+        </h1>
+        <p style="color:#555;margin-bottom:16px">Generated: ${new Date().toLocaleString('en-IN')} &nbsp;|&nbsp; ${lastMonthTxs.length} transactions</p>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
+          <thead>
+            <tr style="background:#f3f4f6;font-size:13px">
+              <th style="border:1px solid #ccc;padding:8px;text-align:left">Date</th>
+              <th style="border:1px solid #ccc;padding:8px;text-align:left">Category</th>
+              <th style="border:1px solid #ccc;padding:8px;text-align:left">Note</th>
+              <th style="border:1px solid #ccc;padding:8px;text-align:right">Amount</th>
+              <th style="border:1px solid #ccc;padding:8px;text-align:center">Type</th>
+            </tr>
+          </thead>
+          <tbody>${rows.length > 0 ? rows : '<tr><td colspan="5" style="border:1px solid #ccc;padding:8px;text-align:center">No transactions found</td></tr>'}</tbody>
+        </table>
+        <div style="float:right;background:#f9fafb;border:2px solid #ccc;border-radius:8px;padding:16px;min-width:240px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Total Income:</span><span style="color:green;font-weight:bold">₹ ${monthlyIncome.toFixed(2)}</span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Total Expense:</span><span style="color:red;font-weight:bold">₹ ${monthlyExpense.toFixed(2)}</span></div>
+          <div style="display:flex;justify-content:space-between;border-top:2px solid #ccc;margin-top:8px;padding-top:8px;font-weight:900;font-size:16px">
+            <span>Net:</span><span style="color:${monthlyIncome - monthlyExpense >= 0 ? 'green' : 'red'}">₹ ${(monthlyIncome - monthlyExpense).toFixed(2)}</span>
+          </div>
+        </div>
+      </body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      localStorage.setItem(`exported_pdf_${lastMonthStr}`, 'true');
+      setShowPdfBanner(false);
+      showToast(
+        language === 'ta' ? 'அறிக்கை வெற்றிகரமாக ஏற்றுமதி செய்யப்பட்டது!' : 'Report successfully exported!', 
+        'success'
+      );
+    }, 400);
   };
 
   // ── Recent Transactions (Constrained Ledger) ──────────────────────────
@@ -337,6 +455,36 @@ export default function DashboardPage() {
 
       {/* ── Content Wrapper ─────────────────────────────────────── */}
       <div className="px-4 pb-24 space-y-6 animate-in fade-in">
+
+        {/* PDF Export Banner */}
+        {showPdfBanner && (
+          <div className="glass-premium p-4 rounded-2xl flex justify-between items-center shadow-lg border border-slate-200 dark:border-white/10 relative overflow-hidden animate-in slide-in-from-top-5 duration-300 md:max-w-4xl lg:max-w-5xl md:mx-auto">
+            <div className="absolute -right-6 -top-6 w-16 h-16 bg-rose-500/10 blur-xl rounded-full pointer-events-none" />
+            <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">
+              <div className="p-2 bg-rose-500/20 rounded-xl flex-shrink-0">
+                <FileText className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
+                  {language === 'ta' 
+                    ? `கடந்த மாத (${['ஜனவரி', 'பிப்ரவரி', 'மார்ச்', 'ஏப்ரல்', 'மே', 'ஜூன்', 'ஜூலை', 'ஆகஸ்ட்', 'செப்டம்பர்', 'அக்டோபர்', 'நவம்பர்', 'டிசம்பர்'][lastMonthIndex]} ${lastMonthYear}) PDF அறிக்கையை ஏற்றுமதி செய்யவும்` 
+                    : `Export last month's (${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][lastMonthIndex]} ${lastMonthYear}) PDF report`}
+                </p>
+                <p className="text-[10px] text-rose-500 dark:text-rose-400 mt-0.5 font-semibold leading-tight">
+                  {language === 'ta' ? 'கடந்த மாத அறிக்கை கட்டாயம் (தேதி 3 முதல்)' : 'Required: Please export last month\'s statement'}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 relative z-10 flex-shrink-0">
+              <button 
+                onClick={handleExportLastMonthPdf} 
+                className="bg-rose-600 dark:bg-rose-500 hover:bg-rose-700 dark:hover:bg-rose-600 text-white px-3.5 py-1.5 rounded-xl text-xs font-black shadow-md transition-all active:scale-95 whitespace-nowrap"
+              >
+                {language === 'ta' ? 'ஏற்றுமதி' : 'Export PDF'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* PWA Install Banner */}
         {showInstallBanner && (
@@ -425,10 +573,10 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <div className={`font-bold tracking-wide ${isOverdue ? 'text-red-400' : 'text-amber-400'}`}>
-                      {isOverdue ? 'OVERDUE' : 'DUE TODAY'}: {bill.name.toUpperCase()}
+                      {isOverdue ? t('overdue') : t('due_today')}: {bill.name.toUpperCase()}
                     </div>
                     <div className="text-sm text-slate-400 mt-0.5">
-                      due {new Date(bill.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                      {t('due')} {new Date(bill.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                     </div>
                   </div>
                 </div>
@@ -438,7 +586,7 @@ export default function DashboardPage() {
               </div>
               <div className="flex gap-3">
                 <button onClick={() => handleMarkPaid(bill)} className={`flex-1 py-4 rounded-[20px] font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-all ${isOverdue ? 'bg-red-500 text-white hover:bg-red-600 shadow-[0_0_15px_rgba(239,68,68,0.3)]' : 'bg-amber-500 text-darkBg hover:bg-amber-600 shadow-[0_0_15px_rgba(245,158,11,0.3)]'}`}>
-                  <CheckCircle2 className="w-4 h-4" /> MARK AS PAID
+                  <CheckCircle2 className="w-4 h-4" /> {t('mark_as_paid')}
                 </button>
               </div>
             </div>
@@ -457,7 +605,7 @@ export default function DashboardPage() {
               const isIncome = tx.type === 'income';
               const isToday = new Date(tx.date).toDateString() === today.toDateString();
               const timeStr = new Date(tx.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-              const dateStr = isToday ? `Today, ${timeStr}` : `${new Date(tx.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${timeStr}`;
+              const dateStr = isToday ? `${t('today')}, ${timeStr}` : `${new Date(tx.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${timeStr}`;
               
               return (
                 <div key={tx.id} 
@@ -469,7 +617,7 @@ export default function DashboardPage() {
                   {/* Left Side: Description & Timestamp */}
                   <div className="flex flex-col min-w-0 flex-1 pr-4">
                     <div className={`font-sans font-bold text-sm text-slate-900 dark:text-white truncate tracking-tight ${language === 'ta' ? 'leading-relaxed tracking-normal' : ''}`}>
-                      {tx.desc?.includes('Automated') ? `${tc(tx.category).toUpperCase()}: AUTOMATED ENTRY` : (tx.desc || tc(tx.category))}
+                      {tx.desc?.includes('Automated') ? `${tc(tx.category).toUpperCase()}: ${language === 'ta' ? 'தானியங்கி பதிவு' : 'AUTOMATED ENTRY'}` : (tx.desc || tc(tx.category))}
                     </div>
                     <div className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-1">{dateStr}</div>
                   </div>

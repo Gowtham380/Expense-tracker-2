@@ -35,7 +35,7 @@ export default function SettingsPage() {
   const [remAmount, setRemAmount] = useState('');
   const [frequency, setFrequency] = useState('monthly'); // 'daily' | 'weekly' | 'monthly'
   const [selectedDayOfWeek, setSelectedDayOfWeek] = useState(1); // 1 (Mon) to 7 (Sun)
-  const [selectedDayOfMonth, setSelectedDayOfMonth] = useState(1); // 1 to 31
+  const [selectedDayOfMonth, setSelectedDayOfMonth] = useState(''); // 1 to 31 (empty initially for placeholder)
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 100% Impact Absolute Identity Pipeline
@@ -129,6 +129,7 @@ export default function SettingsPage() {
     showToast(language === 'ta' ? 'நினைவூட்டல் வெற்றிகரமாக சேர்க்கப்பட்டது!' : 'Reminder added successfully!', 'success');
     setRemCat('');
     setRemAmount('');
+    setSelectedDayOfMonth('');
     setTimeout(() => setIsSubmitting(false), 300);
   };
 
@@ -277,7 +278,7 @@ export default function SettingsPage() {
                 {pwStatus.error && <p className="text-[10px] text-rose-500 dark:text-rose-400 font-medium">{pwStatus.error}</p>}
                 <div className="flex gap-2 pt-1">
                   <button onClick={handleVerifyCurrent} disabled={pwStatus.loading} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50">{t('verify_identity')}</button>
-                  <button onClick={handleResetPassword} disabled={pwStatus.loading} className="bg-transparent border border-slate-300 dark:border-black dark:border-black hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 py-2 px-4 rounded-xl text-xs font-bold transition-all disabled:opacity-50 shadow-sm">Forgot PIN?</button>
+                  <button onClick={handleResetPassword} disabled={pwStatus.loading} className="bg-transparent border border-slate-300 dark:border-black dark:border-black hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 py-2 px-4 rounded-xl text-xs font-bold transition-all disabled:opacity-50 shadow-sm">{language === 'ta' ? 'பின்னை மறந்துவிட்டீர்களா?' : 'Forgot PIN?'}</button>
                 </div>
               </div>
             )}
@@ -382,7 +383,7 @@ export default function SettingsPage() {
                   {tc(cat)}
                   <button
                     onClick={() => {
-                      if(window.confirm(`Delete category "${cat}"?`)) deleteCustomCategory(cat);
+                      if(window.confirm(language === 'ta' ? `வகை "${tc(cat)}"-ஐ நீக்கவா?` : `Delete category "${cat}"?`)) deleteCustomCategory(cat);
                     }}
                     className="opacity-60 hover:opacity-100 hover:text-rose-500 transition-all"
                   >
@@ -403,40 +404,40 @@ export default function SettingsPage() {
           <div className="p-5">
             <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-black dark:border-black mb-4 shadow-sm">
               <button onClick={() => setRemType('income')} className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${remType === 'income' ? 'bg-white dark:bg-[#1e293b] text-emerald-600 dark:text-emerald-400 shadow-sm border border-slate-200 dark:border-black dark:border-black' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
-                Income
+                {t('income_label')}
               </button>
               <button onClick={() => setRemType('expense')} className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${remType === 'expense' ? 'bg-white dark:bg-[#1e293b] text-rose-600 dark:text-rose-400 shadow-sm border border-slate-200 dark:border-black dark:border-black' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
-                Expense
+                {t('expense_label')}
               </button>
             </div>
 
             <div className="grid grid-cols-2 gap-3 mb-4">
               <select value={remCat} onChange={e => setRemCat(e.target.value)} className="bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-black dark:border-black rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-white outline-none col-span-2 focus:border-slate-400 dark:focus:border-slate-500 font-medium">
-                <option value="">Select Category...</option>
+                <option value="">{t('select_category_placeholder')}</option>
                 {customCategories?.filter(c => c.type === remType).map(c => <option key={c.name} value={c.name}>{tc(c.name)}</option>)}
               </select>
               <AmountInput
                 value={remAmount}
                 onChange={e => setRemAmount(e.target.value)}
-                placeholder="Amount (₹)"
+                placeholder={t('amount_label')}
                 className="bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-black dark:border-black rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-white outline-none w-full focus:border-slate-400 dark:focus:border-slate-500 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
               <select value={frequency} onChange={e => setFrequency(e.target.value)} className="bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-black dark:border-black rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-white outline-none w-full focus:border-slate-400 dark:focus:border-slate-500 font-medium">
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="end_of_month">{language === 'ta' ? 'மாத இறுதி' : 'End of Month'}</option>
+                <option value="daily">{t('daily')}</option>
+                <option value="weekly">{t('weekly')}</option>
+                <option value="monthly">{t('monthly')}</option>
+                <option value="end_of_month">{t('end_of_month')}</option>
               </select>
               
               {frequency === 'weekly' && (
                 <select value={selectedDayOfWeek} onChange={e => setSelectedDayOfWeek(Number(e.target.value))} className="bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-black dark:border-black rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-white outline-none col-span-2 focus:border-slate-400 dark:focus:border-slate-500 font-medium">
-                  <option value={1}>Monday</option>
-                  <option value={2}>Tuesday</option>
-                  <option value={3}>Wednesday</option>
-                  <option value={4}>Thursday</option>
-                  <option value={5}>Friday</option>
-                  <option value={6}>Saturday</option>
-                  <option value={7}>Sunday</option>
+                  <option value={1}>{t('monday')}</option>
+                  <option value={2}>{t('tuesday')}</option>
+                  <option value={3}>{t('wednesday')}</option>
+                  <option value={4}>{t('thursday')}</option>
+                  <option value={5}>{t('friday')}</option>
+                  <option value={6}>{t('saturday')}</option>
+                  <option value={7}>{t('sunday')}</option>
                 </select>
               )}
               {frequency === 'monthly' && (
@@ -445,8 +446,8 @@ export default function SettingsPage() {
                   min="1"
                   max="31"
                   value={selectedDayOfMonth}
-                  onChange={e => setSelectedDayOfMonth(Number(e.target.value))}
-                  placeholder="Day (1-31)"
+                  onChange={e => setSelectedDayOfMonth(e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder={t('day_placeholder')}
                   className="bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-black dark:border-black rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-white outline-none col-span-2 focus:border-slate-400 dark:focus:border-slate-500 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 />
               )}
@@ -464,12 +465,12 @@ export default function SettingsPage() {
               {isSubmitting ? (
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-slate-600 border-t-transparent dark:border-slate-400 rounded-full animate-spin"></div>
-                  <span>Saving…</span>
+                  <span>{t('saving')}</span>
                 </div>
               ) : (
                 <>
                   <Plus className="w-4 h-4" /> 
-                  <span>{language === 'ta' ? 'நினைவூட்டலைச் சேர்' : 'Add Reminder'}</span>
+                  <span>{t('add_reminder_btn')}</span>
                 </>
               )}
             </button>
@@ -483,14 +484,14 @@ export default function SettingsPage() {
                       <span className="text-sm font-bold text-slate-900 dark:text-white">{tc(rem.category)}</span>
                     </div>
                     <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
-                      {rem.frequency === 'daily' ? 'Every day' : 
-                       rem.frequency === 'weekly' ? `Every week on ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][rem.day - 1]}` :
-                       rem.frequency === 'end_of_month' ? (language === 'ta' ? 'மாத இறுதி' : 'End of Month') :
-                       rem.frequency === 'monthly' ? `Every month on day ${rem.day}` :
-                       `Every month on day ${rem.day}`} • ₹{rem.amount}
+                      {rem.frequency === 'daily' ? (language === 'ta' ? 'ஒவ்வொரு நாளும்' : 'Every day') : 
+                       rem.frequency === 'weekly' ? (language === 'ta' ? `ஒவ்வொரு வாரமும் ${[t('monday'), t('tuesday'), t('wednesday'), t('thursday'), t('friday'), t('saturday'), t('sunday')][rem.day - 1]}` : `Every week on ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][rem.day - 1]}`) :
+                       rem.frequency === 'end_of_month' ? t('end_of_month') :
+                       rem.frequency === 'monthly' ? (language === 'ta' ? `ஒவ்வொரு மாதமும் ${rem.day} அன்று` : `Every month on day ${rem.day}`) :
+                       (language === 'ta' ? `ஒவ்வொரு மாதமும் ${rem.day} அன்று` : `Every month on day ${rem.day}`)} • ₹{rem.amount}
                     </div>
                   </div>
-                  <button onClick={() => { if(window.confirm('Delete reminder?')) deleteRecurringReminder(rem.id); }} className="text-slate-400 hover:text-rose-500 transition-colors p-2">
+                  <button onClick={() => { if(window.confirm(language === 'ta' ? 'நினைவூட்டலை நீக்கவா?' : 'Delete reminder?')) deleteRecurringReminder(rem.id); }} className="text-slate-400 hover:text-rose-500 transition-colors p-2">
                     <X className="w-4 h-4" />
                   </button>
                 </div>

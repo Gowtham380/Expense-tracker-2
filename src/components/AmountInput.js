@@ -57,7 +57,7 @@ const AmountInput = forwardRef(({
     <input
       ref={ref}
       type="number"
-      step="0.01"
+      step="1"
       value={value}
       onChange={handleChange}
       onKeyDown={handleKeyDown}
